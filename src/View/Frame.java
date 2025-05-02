@@ -32,10 +32,10 @@ public class Frame extends javax.swing.JFrame {
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setBackground(new java.awt.Color(153, 153, 153));
-        setMinimumSize(new java.awt.Dimension(800, 450));
+        setMinimumSize(new java.awt.Dimension(800, 480));
 
         HomePnl.setBackground(new java.awt.Color(102, 102, 102));
-        HomePnl.setPreferredSize(new java.awt.Dimension(801, 500));
+        HomePnl.setPreferredSize(new java.awt.Dimension(801, 530));
 
         javax.swing.GroupLayout ContentLayout = new javax.swing.GroupLayout(Content);
         Content.setLayout(ContentLayout);
@@ -163,7 +163,7 @@ public class Frame extends javax.swing.JFrame {
         );
         ContainerLayout.setVerticalGroup(
             ContainerLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 500, Short.MAX_VALUE)
+            .addGap(0, 530, Short.MAX_VALUE)
             .addGroup(ContainerLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                 .addComponent(HomePnl, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );

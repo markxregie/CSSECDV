@@ -259,65 +259,67 @@ public class Frame extends javax.swing.JFrame {
         frameView.show(Container, "registerPnl");
     }
     
-    public boolean registerAction(String username, String password, String confirmPassword) {
-        // Username validation
+    public ValidationResult registerAction(String username, String password, String confirmPassword) {
+        ValidationResult result = new ValidationResult();
+
         String usernameLower = username.toLowerCase();
         if (usernameLower.length() < 3 || usernameLower.length() > 20) {
-            JOptionPane.showMessageDialog(null, "Username must be between 3 and 20 characters.");
-            return false;
+            result.usernameError = "Username must be between 3 and 20 characters.";
+            return result;
         }
         if (!usernameLower.matches("^[a-z0-9_]+$")) {
-            JOptionPane.showMessageDialog(null, "Username can only contain letters, digits, and underscores.");
-            return false;
+            result.usernameError = "Username can only contain letters, digits, and underscores.";
+            return result;
         }
 
         SQLite db = new SQLite();
         if (db.userExists(usernameLower)) {
-            JOptionPane.showMessageDialog(null, "Username is already taken.");
-            return false;
+            result.usernameError = "Username is already taken.";
+            return result;
         }
 
-        // Password validation
         if (password.length() < 8 || password.length() > 64) {
-            JOptionPane.showMessageDialog(null, "Password must be between 8 and 64 characters.");
-            return false;
+            result.passwordError = "Password must be between 8 and 64 characters.";
+            return result;
         }
         if (!password.matches(".*[a-z].*")) {
-            JOptionPane.showMessageDialog(null, "Password must contain at least one lowercase letter.");
-            return false;
+            result.passwordError = "Password must contain at least one lowercase letter.";
+            return result;
         }
         if (!password.matches(".*[A-Z].*")) {
-            JOptionPane.showMessageDialog(null, "Password must contain at least one uppercase letter.");
-            return false;
+            result.passwordError = "Password must contain at least one uppercase letter.";
+            return result;
         }
         if (!password.matches(".*\\d.*")) {
-            JOptionPane.showMessageDialog(null, "Password must contain at least one digit.");
-            return false;
+            result.passwordError = "Password must contain at least one digit.";
+            return result;
         }
-        if (!password.matches(".*[!@#$%^&*()_+\\-=[\\]{};':\"\\\\|,.<>/?].*")) {
-            JOptionPane.showMessageDialog(null, "Password must contain at least one special character.");
-            return false;
-        }
-
-        // Confirm password check
+if (!password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*")) {
+    result.passwordError = "Password must contain at least one special character.";
+}
         if (!password.equals(confirmPassword)) {
-            JOptionPane.showMessageDialog(null, "Passwords do not match.");
-            return false;
+            result.confirmPasswordError = "Passwords do not match.";
+            return result;
         }
 
-        // Hash the password using BCrypt
         String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
 
-        // Save the user
         boolean success = db.insertUser(usernameLower, hashedPassword);
 
         if (success) {
-            JOptionPane.showMessageDialog(null, "User registered successfully.");
-            return true;
+            result.success = true;
         } else {
-            JOptionPane.showMessageDialog(null, "Failed to register user.");
-            return false;
+            result.passwordError = "Failed to register user.";
         }
+
+        return result;
+    }
+
+    public static class ValidationResult {
+        public boolean success = false;
+        public String usernameError = null;
+        public String passwordError = null;
+        public String confirmPasswordError = null;
     }
     
 

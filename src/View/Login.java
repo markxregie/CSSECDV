@@ -1,6 +1,11 @@
 
 package View;
 
+import Model.User;
+import Controller.SQLite;
+import javax.swing.JOptionPane;
+import org.mindrot.jbcrypt.BCrypt;
+
 public class Login extends javax.swing.JPanel {
 
     public Frame frame;
@@ -82,8 +87,36 @@ public class Login extends javax.swing.JPanel {
                 .addContainerGap(126, Short.MAX_VALUE))
         );
     }// </editor-fold>//GEN-END:initComponents
+
     private void loginBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loginBtnActionPerformed
-        frame.mainNav();
+        String username = usernameFld.getText().trim();
+        String password = passwordFld.getText().trim();
+
+        if (username.isEmpty() || password.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please enter both username and password.", "Login Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        SQLite db = new SQLite();
+        boolean authenticated = false;
+        User authenticatedUser = null;
+
+        for (User user : db.getUsers()) {
+            if (user.getUsername().equalsIgnoreCase(username)) {
+                if (BCrypt.checkpw(password, user.getPassword())) {
+                    authenticated = true;
+                    authenticatedUser = user;
+                    break;
+                }
+            }
+        }
+
+        if (authenticated) {
+            // Navigate to client home on successful login
+            frame.showClientHome();
+        } else {
+            JOptionPane.showMessageDialog(this, "Invalid username or password.", "Login Error", JOptionPane.ERROR_MESSAGE);
+        }
     }//GEN-LAST:event_loginBtnActionPerformed
 
     private void registerBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_registerBtnActionPerformed

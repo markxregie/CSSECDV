@@ -259,6 +259,16 @@ public class Frame extends javax.swing.JFrame {
         frameView.show(Container, "registerPnl");
     }
     
+public void showClientHome() {
+    frameView.show(Container, "homePnl");
+    contentView.show(Content, "clientHomePnl");
+    // Show only client home button, hide others
+    adminBtn.setVisible(false);
+    managerBtn.setVisible(false);
+    staffBtn.setVisible(false);
+    clientBtn.setVisible(true);
+}
+    
     public ValidationResult registerAction(String username, String password, String confirmPassword) {
         ValidationResult result = new ValidationResult();
 

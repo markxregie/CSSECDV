@@ -4,6 +4,11 @@ import Model.User;
 import Controller.SQLite;
 import javax.swing.*;
 import org.mindrot.jbcrypt.BCrypt;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
+import java.util.Locale;
 
 public class Login extends javax.swing.JPanel {
 
@@ -13,8 +18,24 @@ public class Login extends javax.swing.JPanel {
         initComponents();
     }
 
+    // Utility method to convert long timestamp to formatted date/time string
+    private String formatLockoutTime(long timestamp) {
+        if (timestamp <= 0) {
+            return "N/A";
+        }
+        Instant instant = Instant.ofEpochMilli(timestamp);
+        DateTimeFormatter formatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
+                .withLocale(Locale.getDefault())
+                .withZone(ZoneId.systemDefault());
+        return formatter.format(instant);
+    }
+
     public void clearFields() {
         usernameFld.setText("");
+        passwordFld.setText("");
+    }
+
+    public void clearPasswordField() {
         passwordFld.setText("");
     }
 
@@ -130,6 +151,7 @@ forgotPasswordLbl.setForeground(new java.awt.Color(0, 0, 0));
 
         if (username.isEmpty() || password.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Please enter both username and password.", "Login Error", JOptionPane.ERROR_MESSAGE);
+            clearPasswordField();
             return;
         }
 
@@ -141,9 +163,12 @@ forgotPasswordLbl.setForeground(new java.awt.Color(0, 0, 0));
         for (User user : db.getUsers()) {
             if (user.getUsername().equalsIgnoreCase(username)) {
                 long currentTime = System.currentTimeMillis();
-                long lockoutDuration = 15 * 60 * 1000; // 15 minutes in milliseconds
+                // Calculate progressive lockout duration based on failed attempts
+                int failedAttempts = user.getFailedAttempts();
+                long lockoutDuration = 15 * 60 * 1000L * (failedAttempts / 5);
 
-                System.out.println("User: " + username + ", Failed Attempts: " + user.getFailedAttempts() + ", Lockout Time: " + user.getLockoutTime());
+                System.out.println("User: " + username + ", Failed Attempts: " + failedAttempts + ", Lockout Time: " + user.getLockoutTime() + ", Lockout Duration: " + lockoutDuration);
+                System.out.println("Formatted Lockout Time: " + formatLockoutTime(user.getLockoutTime()));
 
                 // Check if user is locked out
                 if (user.getLockoutTime() > 0 && currentTime < user.getLockoutTime() + lockoutDuration) {
@@ -160,8 +185,15 @@ forgotPasswordLbl.setForeground(new java.awt.Color(0, 0, 0));
                         }
                         timeString += seconds + " second" + (seconds > 1 ? "s" : "");
                     }
-                    JOptionPane.showMessageDialog(this, "Account locked due to multiple failed login attempts. Please try again after " + timeString + ".", "Account Locked", JOptionPane.ERROR_MESSAGE);
-                    return;
+            JOptionPane.showMessageDialog(this, "Account locked due to multiple failed login attempts. Please try again after " + timeString + ".", "Account Locked", JOptionPane.ERROR_MESSAGE);
+            clearPasswordField();
+            return;
+        } else if (user.getLockoutTime() > 0 && currentTime >= user.getLockoutTime() + lockoutDuration) {
+                    // Lockout period expired, reset failed attempts and lockout time
+                    db.updateFailedAttempts(username, 0);
+                    db.updateLockoutTime(username, 0L);
+                    user.setFailedAttempts(0);
+                    user.setLockoutTime(0L);
                 }
 
                 // Check password
@@ -173,16 +205,19 @@ forgotPasswordLbl.setForeground(new java.awt.Color(0, 0, 0));
                     break;
                 } else {
                     // Increment failed attempts
-                    int failedAttempts = user.getFailedAttempts() + 1;
-                    db.updateFailedAttempts(username, failedAttempts);
+                    int newFailedAttempts = user.getFailedAttempts() + 1;
+                    db.updateFailedAttempts(username, newFailedAttempts);
 
-                    // Lock account if failed attempts reach 5
-                    if (failedAttempts >= 5) {
+                    // Lock account if failed attempts reach multiple of 5
+                    if (newFailedAttempts % 5 == 0) {
                         db.updateLockoutTime(username, currentTime);
-                        JOptionPane.showMessageDialog(this, "Account locked due to multiple failed login attempts. Please try again after 15 minutes.", "Account Locked", JOptionPane.ERROR_MESSAGE);
+                        long lockoutMinutes = 15 * (newFailedAttempts / 5);
+                        JOptionPane.showMessageDialog(this, "Account locked due to multiple failed login attempts. Please try again after " + lockoutMinutes + " minute" + (lockoutMinutes > 1 ? "s" : "") + ".", "Account Locked", JOptionPane.ERROR_MESSAGE);
+                        clearPasswordField();
                         return;
                     } else {
                         JOptionPane.showMessageDialog(this, "Invalid username or password.", "Login Error", JOptionPane.ERROR_MESSAGE);
+                        clearPasswordField();
                         return;
                     }
                 }
@@ -193,16 +228,19 @@ forgotPasswordLbl.setForeground(new java.awt.Color(0, 0, 0));
             frame.showClientHome();
         } else {
             JOptionPane.showMessageDialog(this, "Invalid username or password.", "Login Error", JOptionPane.ERROR_MESSAGE);
+            clearPasswordField();
         }
     }
 
     private void forgotPasswordLblMouseClicked(java.awt.event.MouseEvent evt) {
+        clearFields();
         if (frame != null) {
             frame.forgotPasswordNav();
         }
     }
 
     private void registerBtnActionPerformed(java.awt.event.ActionEvent evt) {
+        clearFields();
         frame.registerNav();
     }
 

@@ -173,6 +173,12 @@ public class Register extends javax.swing.JPanel {
     }
 
     private void backBtnActionPerformed(java.awt.event.ActionEvent evt) {
+        usernameFld.setText("");
+        passwordFld.setText("");
+        confpassFld.setText("");
+        usernameErrorLbl.setText("");
+        passwordErrorLbl.setText("");
+        confpassErrorLbl.setText("");
         frame.loginNav();
     }
 

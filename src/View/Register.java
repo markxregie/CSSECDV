@@ -17,17 +17,21 @@ public class Register extends javax.swing.JPanel {
         registerBtn = new javax.swing.JButton();
         passwordFld = new javax.swing.JPasswordField();
         usernameFld = new javax.swing.JTextField();
+        emailFld = new javax.swing.JTextField();
         jLabel1 = new javax.swing.JLabel();
         confpassFld = new javax.swing.JPasswordField();
         backBtn = new javax.swing.JButton();
         showPasswordChk = new javax.swing.JCheckBox("Show Passwords");
 
         usernameErrorLbl = new javax.swing.JLabel();
+        emailErrorLbl = new javax.swing.JLabel();
         passwordErrorLbl = new javax.swing.JLabel();
         confpassErrorLbl = new javax.swing.JLabel();
 
         usernameErrorLbl.setFont(new java.awt.Font("Tahoma", 0, 12));
         usernameErrorLbl.setForeground(new java.awt.Color(255, 0, 0));
+        emailErrorLbl.setFont(new java.awt.Font("Tahoma", 0, 12));
+        emailErrorLbl.setForeground(new java.awt.Color(255, 0, 0));
         passwordErrorLbl.setFont(new java.awt.Font("Tahoma", 0, 12));
         passwordErrorLbl.setForeground(new java.awt.Color(255, 0, 0));
         confpassErrorLbl.setFont(new java.awt.Font("Tahoma", 0, 12));
@@ -56,6 +60,15 @@ public class Register extends javax.swing.JPanel {
         usernameFld.setBorder(javax.swing.BorderFactory.createTitledBorder(
                 new javax.swing.border.LineBorder(new java.awt.Color(0, 0, 0), 2, true), 
                 "USERNAME", javax.swing.border.TitledBorder.CENTER, 
+                javax.swing.border.TitledBorder.DEFAULT_POSITION, 
+                new java.awt.Font("Tahoma", 0, 12)));
+
+        emailFld.setBackground(new java.awt.Color(240, 240, 240));
+        emailFld.setFont(new java.awt.Font("Tahoma", 0, 18)); 
+        emailFld.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+        emailFld.setBorder(javax.swing.BorderFactory.createTitledBorder(
+                new javax.swing.border.LineBorder(new java.awt.Color(0, 0, 0), 2, true), 
+                "EMAIL", javax.swing.border.TitledBorder.CENTER, 
                 javax.swing.border.TitledBorder.DEFAULT_POSITION, 
                 new java.awt.Font("Tahoma", 0, 12)));
 
@@ -96,7 +109,9 @@ public class Register extends javax.swing.JPanel {
                 .addContainerGap(200, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addComponent(usernameErrorLbl, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(emailErrorLbl, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(usernameFld)
+                    .addComponent(emailFld)
                     .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(passwordErrorLbl, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(passwordFld, javax.swing.GroupLayout.Alignment.LEADING)
@@ -125,6 +140,10 @@ public class Register extends javax.swing.JPanel {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(usernameErrorLbl, javax.swing.GroupLayout.PREFERRED_SIZE, 15, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(emailFld, javax.swing.GroupLayout.PREFERRED_SIZE, 59, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(emailErrorLbl, javax.swing.GroupLayout.PREFERRED_SIZE, 15, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(passwordFld, javax.swing.GroupLayout.PREFERRED_SIZE, 59, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(passwordErrorLbl, javax.swing.GroupLayout.PREFERRED_SIZE, 15, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -143,18 +162,22 @@ public class Register extends javax.swing.JPanel {
     private void registerBtnActionPerformed(java.awt.event.ActionEvent evt) {
         // Clear previous error messages
         usernameErrorLbl.setText("");
+        emailErrorLbl.setText("");
         passwordErrorLbl.setText("");
         confpassErrorLbl.setText("");
 
         String username = usernameFld.getText();
+        String email = emailFld.getText();
         String password = new String(passwordFld.getPassword());
         String confirmPassword = new String(confpassFld.getPassword());
 
-        ValidationResult result = frame.registerAction(username, password, confirmPassword);
+        ValidationResult result = frame.registerAction(username, email, password, confirmPassword);
 
         if (result.success) {
-            JOptionPane.showMessageDialog(this, "Registration successful!", "Success", JOptionPane.INFORMATION_MESSAGE);
+            // Remove duplicate success message box to avoid double messages
+            // JOptionPane.showMessageDialog(this, "Registration successful!", "Success", JOptionPane.INFORMATION_MESSAGE);
             usernameFld.setText("");
+            emailFld.setText("");
             passwordFld.setText("");
             confpassFld.setText("");
             frame.loginNav();
@@ -162,6 +185,9 @@ public class Register extends javax.swing.JPanel {
             // Display error messages under respective fields
             if (result.usernameError != null) {
                 usernameErrorLbl.setText(result.usernameError);
+            }
+            if (result.emailError != null) {
+                emailErrorLbl.setText(result.emailError);
             }
             if (result.passwordError != null) {
                 passwordErrorLbl.setText(result.passwordError);
@@ -174,9 +200,11 @@ public class Register extends javax.swing.JPanel {
 
     private void backBtnActionPerformed(java.awt.event.ActionEvent evt) {
         usernameFld.setText("");
+        emailFld.setText("");
         passwordFld.setText("");
         confpassFld.setText("");
         usernameErrorLbl.setText("");
+        emailErrorLbl.setText("");
         passwordErrorLbl.setText("");
         confpassErrorLbl.setText("");
         frame.loginNav();
@@ -186,6 +214,7 @@ public class Register extends javax.swing.JPanel {
     private javax.swing.JButton backBtn;
     private javax.swing.JPasswordField confpassFld;
     private javax.swing.JLabel confpassErrorLbl;
+    private javax.swing.JLabel emailErrorLbl;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JPasswordField passwordFld;
     private javax.swing.JLabel passwordErrorLbl;
@@ -193,5 +222,6 @@ public class Register extends javax.swing.JPanel {
     private javax.swing.JTextField usernameFld;
     private javax.swing.JLabel usernameErrorLbl;
     private javax.swing.JCheckBox showPasswordChk;
+    private javax.swing.JTextField emailFld;
     // End of variables declaration
 }

@@ -65,6 +65,110 @@ public class SQLite {
             System.out.print(ex);
         }
     }
+
+    public boolean emailColumnExists() {
+        String sql = "PRAGMA table_info(users)";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                String columnName = rs.getString("name");
+                if ("email".equalsIgnoreCase(columnName)) {
+                    return true;
+                }
+            }
+        } catch (Exception ex) {
+            System.out.println("Error checking email column: " + ex.getMessage());
+        }
+        return false;
+    }
+
+    public void addEmailColumnIfNotExist() {
+        if (!emailColumnExists()) {
+            // SQLite does not support adding UNIQUE constraint via ALTER TABLE
+            // Workaround: create new table with email column and UNIQUE constraint, copy data, drop old table, rename new table
+            String createNewTableSql = "CREATE TABLE users_new (\n"
+                    + " id INTEGER PRIMARY KEY AUTOINCREMENT,\n"
+                    + " username TEXT NOT NULL UNIQUE,\n"
+                    + " email TEXT UNIQUE,\n"
+                    + " password TEXT NOT NULL,\n"
+                    + " role INTEGER DEFAULT 2,\n"
+                    + " locked INTEGER DEFAULT 0,\n"
+                    + " verification_token TEXT,\n"
+                    + " verified INTEGER DEFAULT 0\n"
+                    + ");";
+            String copyDataSql = "";
+            try (Connection conn = DriverManager.getConnection(driverURL);
+                 Statement stmt = conn.createStatement()) {
+                // Get existing columns in old users table
+                ArrayList<String> existingColumns = new ArrayList<>();
+                String pragmaSql = "PRAGMA table_info(users);";
+                try (ResultSet rs = stmt.executeQuery(pragmaSql)) {
+                    while (rs.next()) {
+                        existingColumns.add(rs.getString("name"));
+                    }
+                }
+                // Build column lists for insert and select
+                ArrayList<String> insertColumns = new ArrayList<>();
+                ArrayList<String> selectColumns = new ArrayList<>();
+                insertColumns.add("id");
+                selectColumns.add("id");
+                insertColumns.add("username");
+                selectColumns.add("username");
+                insertColumns.add("email");
+                if (existingColumns.contains("email")) {
+                    selectColumns.add("email");
+                } else {
+                    selectColumns.add("NULL AS email");
+                }
+                insertColumns.add("password");
+                selectColumns.add("password");
+                insertColumns.add("role");
+                if (existingColumns.contains("role")) {
+                    selectColumns.add("role");
+                } else {
+                    selectColumns.add("2 AS role");
+                }
+                insertColumns.add("locked");
+                if (existingColumns.contains("locked")) {
+                    selectColumns.add("locked");
+                } else {
+                    selectColumns.add("0 AS locked");
+                }
+                insertColumns.add("verification_token");
+                if (existingColumns.contains("verification_token")) {
+                    selectColumns.add("verification_token");
+                } else {
+                    selectColumns.add("NULL AS verification_token");
+                }
+                insertColumns.add("verified");
+                if (existingColumns.contains("verified")) {
+                    selectColumns.add("verified");
+                } else {
+                    selectColumns.add("0 AS verified");
+                }
+                copyDataSql = "INSERT INTO users_new (" + String.join(", ", insertColumns) + ") SELECT " + String.join(", ", selectColumns) + " FROM users;";
+                conn.setAutoCommit(false);
+                stmt.execute(createNewTableSql);
+                stmt.execute(copyDataSql);
+                stmt.execute("DROP TABLE users;");
+                stmt.execute("ALTER TABLE users_new RENAME TO users;");
+                conn.commit();
+                System.out.println("Rebuilt users table with email column.");
+            } catch (Exception ex) {
+                System.out.println("Error rebuilding users table with email column: " + ex.getMessage());
+            }
+        }
+    }
+
+    public void initializeDatabase() {
+        createUserTable();
+        addEmailColumnIfNotExist();
+        addLockoutColumnsIfNotExist();
+        createHistoryTable();
+        createLogsTable();
+        createProductTable();
+    }
     public boolean userExists(String username) {
         String sql = "SELECT COUNT(*) FROM users WHERE username = ?";
         try (Connection conn = connect();
@@ -137,9 +241,12 @@ public class SQLite {
         String sql = "CREATE TABLE IF NOT EXISTS users (\n"
             + " id INTEGER PRIMARY KEY AUTOINCREMENT,\n"
             + " username TEXT NOT NULL UNIQUE,\n"
+            + " email TEXT NOT NULL UNIQUE,\n"
             + " password TEXT NOT NULL,\n"
             + " role INTEGER DEFAULT 2,\n"
-            + " locked INTEGER DEFAULT 0\n"
+            + " locked INTEGER DEFAULT 0,\n"
+            + " verification_token TEXT,\n"
+            + " verified INTEGER DEFAULT 0\n"
             + ");";
 
         try (Connection conn = DriverManager.getConnection(driverURL);
@@ -333,7 +440,7 @@ public class SQLite {
     }
     
     public ArrayList<User> getUsers(){
-        String sql = "SELECT id, username, password, role, locked, failed_attempts, lockout_time FROM users";
+        String sql = "SELECT id, username, password, role, locked, failed_attempts, lockout_time, verification_token, verified FROM users";
         ArrayList<User> users = new ArrayList<User>();
         
         try (Connection conn = DriverManager.getConnection(driverURL);
@@ -347,7 +454,9 @@ public class SQLite {
                                    rs.getInt("role"),
                                    rs.getInt("locked"),
                                    rs.getInt("failed_attempts"),
-                                   rs.getLong("lockout_time")));
+                                   rs.getLong("lockout_time"),
+                                   rs.getString("verification_token"),
+                                   rs.getInt("verified") == 1));
             }
         } catch (Exception ex) {}
         return users;
@@ -392,22 +501,43 @@ public class SQLite {
         return product;
     }
 
-    public boolean insertUser(String username, String hashedPassword) {
+    public boolean insertUser(String username, String email, String hashedPassword, String verificationToken) {
         if (userExists(username)) {
             System.out.println("User already exists.");
             return false;
         }
-        String sql = "INSERT INTO users(username, password) VALUES(?, ?)";
+        if (emailExists(email)) {
+            System.out.println("Email already registered.");
+            return false;
+        }
+        String sql = "INSERT INTO users(username, email, password, verification_token, verified) VALUES(?, ?, ?, ?, 0)";
         try (Connection conn = DriverManager.getConnection(driverURL);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, username);
-            pstmt.setString(2, hashedPassword);
+            pstmt.setString(2, email);
+            pstmt.setString(3, hashedPassword);
+            pstmt.setString(4, verificationToken);
             pstmt.executeUpdate();
             return true;
         } catch (Exception ex) {
             System.out.println("Error inserting user: " + ex.getMessage());
             return false;
         }
+    }
+
+    public boolean emailExists(String email) {
+        String sql = "SELECT COUNT(*) FROM users WHERE email = ?";
+        try (Connection conn = connect();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, email);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+        } catch (Exception e) {
+            System.out.println("Error checking email: " + e.getMessage());
+        }
+        return false;
     }
 
     public void updateFailedAttempts(String username, int failedAttempts) {
@@ -435,7 +565,7 @@ public class SQLite {
     }
 
     public User getUserByUsername(String username) {
-        String sql = "SELECT id, username, password, role, locked, failed_attempts, lockout_time FROM users WHERE username = ?";
+        String sql = "SELECT id, username, password, role, locked, failed_attempts, lockout_time, verification_token, verified FROM users WHERE username = ?";
         try (Connection conn = DriverManager.getConnection(driverURL);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, username);
@@ -447,11 +577,36 @@ public class SQLite {
                                 rs.getInt("role"),
                                 rs.getInt("locked"),
                                 rs.getInt("failed_attempts"),
-                                rs.getLong("lockout_time"));
+                                rs.getLong("lockout_time"),
+                                rs.getString("verification_token"),
+                                rs.getInt("verified") == 1);
             }
         } catch (SQLException e) {
             System.out.println("Error fetching user by username: " + e.getMessage());
         }
         return null;
+    }
+
+    public boolean verifyUserByToken(String token) {
+        String selectSql = "SELECT id FROM users WHERE verification_token = ?";
+        String updateSql = "UPDATE users SET verified = 1, verification_token = NULL WHERE id = ?";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+             PreparedStatement selectStmt = conn.prepareStatement(selectSql)) {
+            selectStmt.setString(1, token);
+            ResultSet rs = selectStmt.executeQuery();
+            if (rs.next()) {
+                int userId = rs.getInt("id");
+                try (PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
+                    updateStmt.setInt(1, userId);
+                    int rowsUpdated = updateStmt.executeUpdate();
+                    return rowsUpdated > 0;
+                }
+            } else {
+                return false;
+            }
+        } catch (SQLException e) {
+            System.out.println("Error verifying user by token: " + e.getMessage());
+            return false;
+        }
     }
 }

@@ -9,6 +9,11 @@ import javax.swing.JOptionPane;
 import javax.swing.WindowConstants;
 import org.mindrot.jbcrypt.BCrypt;
 
+import java.util.UUID;
+import javax.mail.*;
+import javax.mail.internet.*;
+import java.util.Properties;
+
 public class Frame extends javax.swing.JFrame {
 
     public Frame() {
@@ -32,10 +37,10 @@ public class Frame extends javax.swing.JFrame {
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setBackground(new java.awt.Color(153, 153, 153));
-        setMinimumSize(new java.awt.Dimension(800, 480));
+        setMinimumSize(new java.awt.Dimension(800, 700));
 
         HomePnl.setBackground(new java.awt.Color(102, 102, 102));
-        HomePnl.setPreferredSize(new java.awt.Dimension(801, 530));
+        HomePnl.setPreferredSize(new java.awt.Dimension(801, 750));
 
         javax.swing.GroupLayout ContentLayout = new javax.swing.GroupLayout(Content);
         Content.setLayout(ContentLayout);
@@ -163,7 +168,7 @@ public class Frame extends javax.swing.JFrame {
         );
         ContainerLayout.setVerticalGroup(
             ContainerLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 530, Short.MAX_VALUE)
+            .addGap(0, 750, Short.MAX_VALUE)
             .addGroup(ContainerLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                 .addComponent(HomePnl, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
@@ -236,6 +241,9 @@ public class Frame extends javax.swing.JFrame {
         registerPnl.frame = this;
         forgotPasswordPnl.frame = this;
 
+        // Initialize database schema and migrations
+        main.sqlite.initializeDatabase();
+
         adminHomePnl.init(main.sqlite);
         clientHomePnl.init(main.sqlite);
         managerHomePnl.init(main.sqlite);
@@ -282,8 +290,8 @@ public void showClientHome() {
     staffBtn.setVisible(false);
     clientBtn.setVisible(true);
 }
-    
-    public ValidationResult registerAction(String username, String password, String confirmPassword) {
+
+public ValidationResult registerAction(String username, String email, String password, String confirmPassword) {
         ValidationResult result = new ValidationResult();
 
         String usernameLower = username.toLowerCase();
@@ -296,9 +304,22 @@ public void showClientHome() {
             return result;
         }
 
+        if (email == null || email.isEmpty()) {
+            result.emailError = "Email is required.";
+            return result;
+        }
+        if (!email.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$")) {
+            result.emailError = "Invalid email format.";
+            return result;
+        }
+
         SQLite db = new SQLite();
         if (db.userExists(usernameLower)) {
             result.usernameError = "Username is already taken.";
+            return result;
+        }
+        if (db.emailExists(email)) {
+            result.emailError = "Email is already registered.";
             return result;
         }
 
@@ -328,27 +349,80 @@ if (!password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*")) {
 
         String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
 
-        boolean success = db.insertUser(usernameLower, hashedPassword);
+        // Generate verification token
+        String verificationToken = UUID.randomUUID().toString();
 
-        if (success) {
-            result.success = true;
-        } else {
-            result.passwordError = "Failed to register user.";
-        }
+        boolean success = db.insertUser(usernameLower, email, hashedPassword, verificationToken);
+
+            if (success) {
+                // Send verification email
+                try {
+                    sendVerificationEmail(email, verificationToken);
+                    // Show VerifyDialog to enter token manually
+                    VerifyDialog verifyDialog = new VerifyDialog(this);
+                    verifyDialog.setVisible(true);
+                    if (verifyDialog.isVerifiedSuccessfully()) {
+                        JOptionPane.showMessageDialog(this, "Registration successful!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                        result.success = true;
+                    } else {
+                        // Delete unverified user record
+                        SQLite dbDelete = new SQLite();
+                        dbDelete.removeUser(usernameLower);
+                        result.success = false;
+                        result.passwordError = "Email verification is required to complete registration.";
+                    }
+                } catch (Exception e) {
+                    result.passwordError = "Failed to send verification email.";
+                }
+            } else {
+                result.passwordError = "Failed to register user.";
+            }
 
         return result;
     }
 
-    public static class ValidationResult {
+    private void sendVerificationEmail(String recipientEmail, String token) throws MessagingException {
+        // Configure email properties
+        String host = "smtp.gmail.com"; // Replace with your SMTP server
+        String from = "marklegend029@gmail.com"; // Replace with your sender email
+        String pass = "cupl ooiy kqmd irbk"; // Replace with your email password
+
+        Properties props = new Properties();
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.starttls.enable", "true");
+        props.put("mail.smtp.host", host);
+        props.put("mail.smtp.port", "587");
+
+        Session session = Session.getInstance(props,
+          new javax.mail.Authenticator() {
+            protected PasswordAuthentication getPasswordAuthentication() {
+                return new PasswordAuthentication(from, pass);
+            }
+          });
+
+        Message message = new MimeMessage(session);
+        message.setFrom(new InternetAddress(from));
+        message.setRecipients(Message.RecipientType.TO,
+            InternetAddress.parse(recipientEmail));
+        message.setSubject("Email Verification");
+        // Adjust email content to instruct user to use the VerifyDialog
+        String emailContent = "Thank you for registering.\n\n"
+                + "Please verify your email by entering the following verification token in the application:\n\n"
+                + token + "\n\n"
+                + "Open the app and enter this token in the verification dialog to activate your account.";
+        message.setText(emailContent);
+
+        Transport.send(message);
+    }
+
+public static class ValidationResult {
         public boolean success = false;
         public String usernameError = null;
+        public String emailError = null;
         public String passwordError = null;
         public String confirmPasswordError = null;
     }
     
-
-
-
     // Variables declaration - do not modify                     
     private javax.swing.JPanel Container;
     private javax.swing.JPanel Content;

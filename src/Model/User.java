@@ -6,18 +6,22 @@ public class User {
     private String password;
     private int role = 2;
     private int locked = 0;
+    private int failedAttempts = 0;
+    private long lockoutTime = 0L;
 
     public User(String username, String password){
         this.username = username;
         this.password = password;
     }
     
-    public User(int id, String username, String password, int role, int locked){
+    public User(int id, String username, String password, int role, int locked, int failedAttempts, long lockoutTime){
         this.id = id;
         this.username = username;
         this.password = password;
         this.role = role;
         this.locked = locked;
+        this.failedAttempts = failedAttempts;
+        this.lockoutTime = lockoutTime;
     }
     
     public int getId() {
@@ -58,5 +62,21 @@ public class User {
 
     public void setLocked(int locked) {
         this.locked = locked;
+    }
+
+    public int getFailedAttempts() {
+        return failedAttempts;
+    }
+
+    public void setFailedAttempts(int failedAttempts) {
+        this.failedAttempts = failedAttempts;
+    }
+
+    public long getLockoutTime() {
+        return lockoutTime;
+    }
+
+    public void setLockoutTime(long lockoutTime) {
+        this.lockoutTime = lockoutTime;
     }
 }

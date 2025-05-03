@@ -71,6 +71,18 @@ public class Login extends javax.swing.JPanel {
             }
         });
 
+        forgotPasswordLbl = new javax.swing.JLabel();
+        forgotPasswordLbl.setFont(new java.awt.Font("Tahoma", 0, 14)); // NOI18N
+forgotPasswordLbl.setForeground(new java.awt.Color(0, 0, 0));
+        forgotPasswordLbl.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        forgotPasswordLbl.setText("Forgot Password?");
+        forgotPasswordLbl.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        forgotPasswordLbl.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                forgotPasswordLblMouseClicked(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
@@ -85,7 +97,10 @@ public class Login extends javax.swing.JPanel {
                         .addComponent(registerBtn, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(loginBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 178, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addComponent(showPasswordChk, javax.swing.GroupLayout.Alignment.LEADING))
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(showPasswordChk)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 100, Short.MAX_VALUE)
+                        .addComponent(forgotPasswordLbl, javax.swing.GroupLayout.PREFERRED_SIZE, 140, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap(200, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
@@ -98,7 +113,9 @@ public class Login extends javax.swing.JPanel {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(passwordFld, javax.swing.GroupLayout.PREFERRED_SIZE, 59, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(showPasswordChk)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(showPasswordChk)
+                    .addComponent(forgotPasswordLbl, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(registerBtn, javax.swing.GroupLayout.PREFERRED_SIZE, 52, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -117,23 +134,71 @@ public class Login extends javax.swing.JPanel {
         }
 
         SQLite db = new SQLite();
-        boolean authenticated = false;
+        db.addLockoutColumnsIfNotExist(); // Ensure columns exist in DB
+
         User authenticatedUser = null;
 
         for (User user : db.getUsers()) {
             if (user.getUsername().equalsIgnoreCase(username)) {
+                long currentTime = System.currentTimeMillis();
+                long lockoutDuration = 15 * 60 * 1000; // 15 minutes in milliseconds
+
+                System.out.println("User: " + username + ", Failed Attempts: " + user.getFailedAttempts() + ", Lockout Time: " + user.getLockoutTime());
+
+                // Check if user is locked out
+                if (user.getLockoutTime() > 0 && currentTime < user.getLockoutTime() + lockoutDuration) {
+                    long remainingTimeSeconds = (user.getLockoutTime() + lockoutDuration - currentTime) / 1000;
+                    long minutes = remainingTimeSeconds / 60;
+                    long seconds = remainingTimeSeconds % 60;
+                    String timeString = "";
+                    if (minutes > 0) {
+                        timeString += minutes + " minute" + (minutes > 1 ? "s" : "");
+                    }
+                    if (seconds > 0) {
+                        if (!timeString.isEmpty()) {
+                            timeString += " ";
+                        }
+                        timeString += seconds + " second" + (seconds > 1 ? "s" : "");
+                    }
+                    JOptionPane.showMessageDialog(this, "Account locked due to multiple failed login attempts. Please try again after " + timeString + ".", "Account Locked", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                // Check password
                 if (BCrypt.checkpw(password, user.getPassword())) {
-                    authenticated = true;
                     authenticatedUser = user;
+                    // Reset failed attempts and lockout time on successful login
+                    db.updateFailedAttempts(username, 0);
+                    db.updateLockoutTime(username, 0L);
                     break;
+                } else {
+                    // Increment failed attempts
+                    int failedAttempts = user.getFailedAttempts() + 1;
+                    db.updateFailedAttempts(username, failedAttempts);
+
+                    // Lock account if failed attempts reach 5
+                    if (failedAttempts >= 5) {
+                        db.updateLockoutTime(username, currentTime);
+                        JOptionPane.showMessageDialog(this, "Account locked due to multiple failed login attempts. Please try again after 15 minutes.", "Account Locked", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Invalid username or password.", "Login Error", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
                 }
             }
         }
 
-        if (authenticated) {
+        if (authenticatedUser != null) {
             frame.showClientHome();
         } else {
             JOptionPane.showMessageDialog(this, "Invalid username or password.", "Login Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void forgotPasswordLblMouseClicked(java.awt.event.MouseEvent evt) {
+        if (frame != null) {
+            frame.forgotPasswordNav();
         }
     }
 
@@ -143,6 +208,7 @@ public class Login extends javax.swing.JPanel {
 
     // Variables declaration
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel forgotPasswordLbl;
     private javax.swing.JButton loginBtn;
     private javax.swing.JPasswordField passwordFld;
     private javax.swing.JButton registerBtn;

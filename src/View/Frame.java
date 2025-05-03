@@ -216,54 +216,61 @@ public class Frame extends javax.swing.JFrame {
     public Main main;
     public Login loginPnl = new Login();
     public Register registerPnl = new Register();
-    
+    public ForgotPassword forgotPasswordPnl = new ForgotPassword();
+
     private AdminHome adminHomePnl = new AdminHome();
     private ManagerHome managerHomePnl = new ManagerHome();
     private StaffHome staffHomePnl = new StaffHome();
     private ClientHome clientHomePnl = new ClientHome();
-    
+
     private CardLayout contentView = new CardLayout();
     private CardLayout frameView = new CardLayout();
-    
+
     public void init(Main controller){
         this.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         this.setTitle("CSSECDV - SECURITY Svcs");
         this.setLocationRelativeTo(null);
-        
+
         this.main = controller;
         loginPnl.frame = this;
         registerPnl.frame = this;
-        
+        forgotPasswordPnl.frame = this;
+
         adminHomePnl.init(main.sqlite);
         clientHomePnl.init(main.sqlite);
         managerHomePnl.init(main.sqlite);
         staffHomePnl.init(main.sqlite);
-        
+
         Container.setLayout(frameView);
         Container.add(loginPnl, "loginPnl");
         Container.add(registerPnl, "registerPnl");
+        Container.add(forgotPasswordPnl, "forgotPasswordPnl");
         Container.add(HomePnl, "homePnl");
         frameView.show(Container, "loginPnl");
-        
+
         Content.setLayout(contentView);
         Content.add(adminHomePnl, "adminHomePnl");
         Content.add(managerHomePnl, "managerHomePnl");
         Content.add(staffHomePnl, "staffHomePnl");
         Content.add(clientHomePnl, "clientHomePnl");
-        
+
         this.setVisible(true);
     }
     
     public void mainNav(){
         frameView.show(Container, "homePnl");
     }
-    
+
     public void loginNav(){
         frameView.show(Container, "loginPnl");
     }
-    
+
     public void registerNav(){
         frameView.show(Container, "registerPnl");
+    }
+
+    public void forgotPasswordNav(){
+        frameView.show(Container, "forgotPasswordPnl");
     }
     
 public void showClientHome() {

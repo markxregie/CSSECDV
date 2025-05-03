@@ -13,6 +13,11 @@ public class Login extends javax.swing.JPanel {
         initComponents();
     }
 
+    public void clearFields() {
+        usernameFld.setText("");
+        passwordFld.setText("");
+    }
+
     @SuppressWarnings("unchecked")
     private void initComponents() {
 

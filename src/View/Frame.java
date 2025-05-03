@@ -203,7 +203,14 @@ public class Frame extends javax.swing.JFrame {
     }                                         
 
     private void logoutBtnActionPerformed(java.awt.event.ActionEvent evt) {                                          
-        frameView.show(Container, "loginPnl");
+        int confirm = javax.swing.JOptionPane.showConfirmDialog(this, "Are you sure you want to logout?", "Logout Confirmation", javax.swing.JOptionPane.YES_NO_OPTION);
+        if (confirm == javax.swing.JOptionPane.YES_OPTION) {
+            // Clear login fields using public method
+            loginPnl.clearFields();
+            // Show login panel
+            frameView.show(Container, "loginPnl");
+        }
+        // If NO_OPTION or closed dialog, do nothing
     }                                         
 
     public Main main;

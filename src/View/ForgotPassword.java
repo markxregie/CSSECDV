@@ -19,6 +19,11 @@ public class ForgotPassword extends JPanel {
         initComponents();
     }
 
+    public void clearFields() {
+        emailFld.setText("");
+        emailErrorLbl.setText("");
+    }
+
     @SuppressWarnings("unchecked")
     private void initComponents() {
 

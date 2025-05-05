@@ -444,6 +444,7 @@ JOptionPane.showMessageDialog(this,
     }
 
     public void forgotPasswordNav(){
+        forgotPasswordPnl.clearFields();
         frameView.show(Container, "forgotPasswordPnl");
     }
 

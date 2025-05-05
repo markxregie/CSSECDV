@@ -2,6 +2,7 @@ package View;
 
 import Controller.Main;
 import Controller.SQLite;
+import Model.User;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Dimension;
@@ -18,6 +19,167 @@ public class Frame extends javax.swing.JFrame {
 
     public Frame() {
         initComponents();
+    }
+
+    public void handlePasswordResetRequest(String email) {
+        // Clear previous error message
+        forgotPasswordPnl.setEmailError("");
+
+        if (email == null || email.isEmpty()) {
+            forgotPasswordPnl.setEmailError("Email is required.");
+            return;
+        }
+        if (!email.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$")) {
+            forgotPasswordPnl.setEmailError("Invalid email format.");
+            return;
+        }
+
+        SQLite db = new SQLite();
+        if (!db.emailExists(email)) {
+            // Show generic message to avoid user enumeration
+JOptionPane.showMessageDialog(this,
+                "If the email is registered, you will receive a password reset email.",
+                "Password Reset",
+                JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        // Generate secure random token
+        String token = java.util.UUID.randomUUID().toString();
+        // Set expiry to 1 hour from now
+        long expiry = System.currentTimeMillis() + 3600 * 1000;
+
+        // Store token and expiry in DB
+        db.setPasswordResetToken(email, token, expiry);
+
+        try {
+            sendPasswordResetEmail(email, token);
+        } catch (javax.mail.MessagingException e) {
+            JOptionPane.showMessageDialog(this,
+                "Failed to send password reset email. Please try again later.",
+                "Email Error",
+                JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        JOptionPane.showMessageDialog(this,
+            "A password reset token has been sent to your email.\n" +
+            "Please check your email for the token and use the Reset Password screen to reset your password.",
+            "Password Reset",
+            JOptionPane.INFORMATION_MESSAGE);
+
+        // Navigate to reset password panel
+        resetPasswordNav();
+    }
+
+    public void handleResetPassword(String token, String newPassword, String confirmPassword) {
+        // Clear previous error messages
+        resetPasswordPnl.setTokenError("");
+        resetPasswordPnl.setPasswordError("");
+        resetPasswordPnl.setConfirmPasswordError("");
+
+        boolean hasError = false;
+
+        if (token == null || token.isEmpty()) {
+            resetPasswordPnl.setTokenError("Reset token is required.");
+            hasError = true;
+        }
+
+        if (newPassword == null || newPassword.isEmpty()) {
+            resetPasswordPnl.setPasswordError("New password is required.");
+            hasError = true;
+        } else {
+            if (newPassword.length() < 8 || newPassword.length() > 64) {
+                resetPasswordPnl.setPasswordError("Password must be between 8 and 64 characters.");
+                hasError = true;
+            }
+            if (!newPassword.matches(".*[a-z].*")) {
+                resetPasswordPnl.setPasswordError("Password must contain at least one lowercase letter.");
+                hasError = true;
+            }
+            if (!newPassword.matches(".*[A-Z].*")) {
+                resetPasswordPnl.setPasswordError("Password must contain at least one uppercase letter.");
+                hasError = true;
+            }
+            if (!newPassword.matches(".*\\d.*")) {
+                resetPasswordPnl.setPasswordError("Password must contain at least one digit.");
+                hasError = true;
+            }
+            if (!newPassword.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*")) {
+                resetPasswordPnl.setPasswordError("Password must contain at least one special character.");
+                hasError = true;
+            }
+        }
+
+        if (confirmPassword == null || confirmPassword.isEmpty()) {
+            resetPasswordPnl.setConfirmPasswordError("Confirm password is required.");
+            hasError = true;
+        } else if (!newPassword.equals(confirmPassword)) {
+            resetPasswordPnl.setConfirmPasswordError("Passwords do not match.");
+            hasError = true;
+        }
+
+        if (hasError) {
+            return;
+        }
+
+        SQLite db = new SQLite();
+        User user = db.getUserByResetToken(token);
+        if (user == null) {
+            resetPasswordPnl.setTokenError("Invalid or expired reset token.");
+            return;
+        }
+
+        // Hash the new password
+        String hashedPassword = org.mindrot.jbcrypt.BCrypt.hashpw(newPassword, org.mindrot.jbcrypt.BCrypt.gensalt());
+
+        // Update password in DB
+        db.updatePassword(user.getId(), hashedPassword);
+
+        // Clear reset token
+        db.clearResetToken(user.getId());
+
+        JOptionPane.showMessageDialog(this,
+            "Password has been reset successfully. You can now log in with your new password.",
+            "Password Reset Successful",
+            JOptionPane.INFORMATION_MESSAGE);
+
+        resetPasswordPnl.clearFields();
+        loginNav();
+    }
+
+    private void sendPasswordResetEmail(String recipientEmail, String token) throws javax.mail.MessagingException {
+        // Configure email properties
+        String host = "smtp.gmail.com"; // Replace with your SMTP server
+        String from = "marklegend029@gmail.com"; // Replace with your sender email
+        String pass = "cupl ooiy kqmd irbk"; // Replace with your email password
+
+        java.util.Properties props = new java.util.Properties();
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.starttls.enable", "true");
+        props.put("mail.smtp.host", host);
+        props.put("mail.smtp.port", "587");
+
+        javax.mail.Session session = javax.mail.Session.getInstance(props,
+          new javax.mail.Authenticator() {
+            protected javax.mail.PasswordAuthentication getPasswordAuthentication() {
+                return new javax.mail.PasswordAuthentication(from, pass);
+            }
+          });
+
+        javax.mail.Message message = new javax.mail.internet.MimeMessage(session);
+        message.setFrom(new javax.mail.internet.InternetAddress(from));
+        message.setRecipients(javax.mail.Message.RecipientType.TO,
+            javax.mail.internet.InternetAddress.parse(recipientEmail));
+        message.setSubject("Password Reset Request");
+        String emailContent = "You requested a password reset.\n\n"
+                + "Please use the following reset token in the Reset Password screen of the application:\n\n"
+                + token + "\n\n"
+                + "If you did not request this, please ignore this email.\n\n"
+                + "This token will expire in 1 hour.";
+        message.setText(emailContent);
+
+        javax.mail.Transport.send(message);
     }
 
     @SuppressWarnings("unchecked")
@@ -222,6 +384,7 @@ public class Frame extends javax.swing.JFrame {
     public Login loginPnl = new Login();
     public Register registerPnl = new Register();
     public ForgotPassword forgotPasswordPnl = new ForgotPassword();
+    public ResetPassword resetPasswordPnl = new ResetPassword();
 
     private AdminHome adminHomePnl = new AdminHome();
     private ManagerHome managerHomePnl = new ManagerHome();
@@ -240,9 +403,11 @@ public class Frame extends javax.swing.JFrame {
         loginPnl.frame = this;
         registerPnl.frame = this;
         forgotPasswordPnl.frame = this;
+        resetPasswordPnl.frame = this;
 
         // Initialize database schema and migrations
         main.sqlite.initializeDatabase();
+        main.sqlite.addPasswordResetColumnsIfNotExist();
 
         adminHomePnl.init(main.sqlite);
         clientHomePnl.init(main.sqlite);
@@ -253,6 +418,7 @@ public class Frame extends javax.swing.JFrame {
         Container.add(loginPnl, "loginPnl");
         Container.add(registerPnl, "registerPnl");
         Container.add(forgotPasswordPnl, "forgotPasswordPnl");
+        Container.add(resetPasswordPnl, "resetPasswordPnl");
         Container.add(HomePnl, "homePnl");
         frameView.show(Container, "loginPnl");
 
@@ -280,6 +446,11 @@ public class Frame extends javax.swing.JFrame {
     public void forgotPasswordNav(){
         frameView.show(Container, "forgotPasswordPnl");
     }
+
+    public void resetPasswordNav(){
+        frameView.show(Container, "resetPasswordPnl");
+    }
+    
     
 public void showClientHome() {
     frameView.show(Container, "homePnl");

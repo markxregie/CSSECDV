@@ -66,6 +66,102 @@ public class SQLite {
         }
     }
 
+    // New method to add password reset token and expiration columns if not exist
+    public void addPasswordResetColumnsIfNotExist() {
+        String sql1 = "ALTER TABLE users ADD COLUMN reset_token TEXT";
+        String sql2 = "ALTER TABLE users ADD COLUMN reset_token_expiry INTEGER";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+             Statement stmt = conn.createStatement()) {
+            try {
+                stmt.execute(sql1);
+                System.out.println("Column reset_token added to users table.");
+            } catch (SQLException e) {
+                if (!e.getMessage().contains("duplicate column name")) {
+                    System.out.println("Error adding reset_token column: " + e.getMessage());
+                }
+            }
+            try {
+                stmt.execute(sql2);
+                System.out.println("Column reset_token_expiry added to users table.");
+            } catch (SQLException e) {
+                if (!e.getMessage().contains("duplicate column name")) {
+                    System.out.println("Error adding reset_token_expiry column: " + e.getMessage());
+                }
+            }
+        } catch (Exception ex) {
+            System.out.print(ex);
+        }
+    }
+
+    // Method to set password reset token and expiry for a user
+    public void setPasswordResetToken(String email, String token, long expiry) {
+        String sql = "UPDATE users SET reset_token = ?, reset_token_expiry = ? WHERE email = ?";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, token);
+            pstmt.setLong(2, expiry);
+            pstmt.setString(3, email);
+            pstmt.executeUpdate();
+        } catch (Exception e) {
+            System.out.println("Error setting password reset token: " + e.getMessage());
+        }
+    }
+
+    // Method to get user by reset token
+    public User getUserByResetToken(String token) {
+        String sql = "SELECT id, username, password, role, locked, failed_attempts, lockout_time, verification_token, verified, reset_token, reset_token_expiry FROM users WHERE reset_token = ?";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, token);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                long expiry = rs.getLong("reset_token_expiry");
+                long now = System.currentTimeMillis();
+                if (expiry < now) {
+                    return null; // token expired
+                }
+                User user = new User(rs.getInt("id"),
+                                rs.getString("username"),
+                                rs.getString("password"),
+                                rs.getInt("role"),
+                                rs.getInt("locked"),
+                                rs.getInt("failed_attempts"),
+                                rs.getLong("lockout_time"),
+                                rs.getString("verification_token"),
+                                rs.getInt("verified") == 1);
+                return user;
+            }
+        } catch (Exception e) {
+            System.out.println("Error fetching user by reset token: " + e.getMessage());
+        }
+        return null;
+    }
+
+    // Method to clear reset token after password reset
+    public void clearResetToken(int userId) {
+        String sql = "UPDATE users SET reset_token = NULL, reset_token_expiry = NULL WHERE id = ?";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, userId);
+            pstmt.executeUpdate();
+        } catch (Exception e) {
+            System.out.println("Error clearing reset token: " + e.getMessage());
+        }
+    }
+
+    // Method to update user's password by user ID
+    public void updatePassword(int userId, String hashedPassword) {
+        String sql = "UPDATE users SET password = ? WHERE id = ?";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, hashedPassword);
+            pstmt.setInt(2, userId);
+            pstmt.executeUpdate();
+        } catch (Exception e) {
+            System.out.println("Error updating password: " + e.getMessage());
+        }
+    }
+
     public boolean emailColumnExists() {
         String sql = "PRAGMA table_info(users)";
         try (Connection conn = DriverManager.getConnection(driverURL);

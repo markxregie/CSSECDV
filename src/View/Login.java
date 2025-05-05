@@ -225,7 +225,24 @@ forgotPasswordLbl.setForeground(new java.awt.Color(0, 0, 0));
         }
 
         if (authenticatedUser != null) {
-            frame.showClientHome();
+            int role = authenticatedUser.getRole();
+            switch (role) {
+                case 5:
+                    frame.showAdminHome();
+                    break;
+                case 4:
+                    frame.showManagerHome();
+                    break;
+                case 3:
+                    frame.showStaffHome();
+                    break;
+                case 2:
+                    frame.showClientHome();
+                    break;
+                default:
+                    frame.showClientHome();
+                    break;
+            }
         } else {
             JOptionPane.showMessageDialog(this, "Invalid username or password.", "Login Error", JOptionPane.ERROR_MESSAGE);
             clearPasswordField();

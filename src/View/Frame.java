@@ -453,15 +453,6 @@ JOptionPane.showMessageDialog(this,
     }
     
     
-public void showClientHome() {
-    frameView.show(Container, "homePnl");
-    contentView.show(Content, "clientHomePnl");
-    // Show only client home button, hide others
-    adminBtn.setVisible(false);
-    managerBtn.setVisible(false);
-    staffBtn.setVisible(false);
-    clientBtn.setVisible(true);
-}
 
 public ValidationResult registerAction(String username, String email, String password, String confirmPassword) {
         ValidationResult result = new ValidationResult();
@@ -607,4 +598,44 @@ public static class ValidationResult {
     private javax.swing.JButton managerBtn;
     private javax.swing.JButton staffBtn;
     // End of variables declaration                   
+
+    public void showAdminHome() {
+        adminBtn.doClick();
+        mainNav();
+        // Show only admin button, hide others
+        adminBtn.setVisible(true);
+        managerBtn.setVisible(false);
+        staffBtn.setVisible(false);
+        clientBtn.setVisible(false);
+    }
+
+    public void showManagerHome() {
+        managerBtn.doClick();
+        mainNav();
+        // Show only manager button, hide others
+        adminBtn.setVisible(false);
+        managerBtn.setVisible(true);
+        staffBtn.setVisible(false);
+        clientBtn.setVisible(false);
+    }
+
+    public void showStaffHome() {
+        staffBtn.doClick();
+        mainNav();
+        // Show only staff button, hide others
+        adminBtn.setVisible(false);
+        managerBtn.setVisible(false);
+        staffBtn.setVisible(true);
+        clientBtn.setVisible(false);
+    }
+
+    public void showClientHome() {
+        clientBtn.doClick();
+        mainNav();
+        // Show only client button, hide others
+        adminBtn.setVisible(false);
+        managerBtn.setVisible(false);
+        staffBtn.setVisible(false);
+        clientBtn.setVisible(true);
+    }
 }

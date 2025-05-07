@@ -8,6 +8,7 @@ public class User {
     private int locked = 0;
     private int failedAttempts = 0;
     private long lockoutTime = 0L;
+    private int lockoutMultiplier = 0;
     private String verificationToken;
     private boolean verified = false;
 
@@ -16,7 +17,7 @@ public class User {
         this.password = password;
     }
     
-    public User(int id, String username, String password, int role, int locked, int failedAttempts, long lockoutTime, String verificationToken, boolean verified){
+    public User(int id, String username, String password, int role, int locked, int failedAttempts, long lockoutTime, int lockoutMultiplier, String verificationToken, boolean verified){
         this.id = id;
         this.username = username;
         this.password = password;
@@ -24,6 +25,7 @@ public class User {
         this.locked = locked;
         this.failedAttempts = failedAttempts;
         this.lockoutTime = lockoutTime;
+        this.lockoutMultiplier = lockoutMultiplier;
         this.verificationToken = verificationToken;
         this.verified = verified;
     }
@@ -82,6 +84,14 @@ public class User {
 
     public void setLockoutTime(long lockoutTime) {
         this.lockoutTime = lockoutTime;
+    }
+
+    public int getLockoutMultiplier() {
+        return lockoutMultiplier;
+    }
+
+    public void setLockoutMultiplier(int lockoutMultiplier) {
+        this.lockoutMultiplier = lockoutMultiplier;
     }
 
     public String getVerificationToken() {

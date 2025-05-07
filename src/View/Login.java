@@ -163,11 +163,12 @@ forgotPasswordLbl.setForeground(new java.awt.Color(0, 0, 0));
         for (User user : db.getUsers()) {
             if (user.getUsername().equalsIgnoreCase(username)) {
                 long currentTime = System.currentTimeMillis();
-                // Calculate progressive lockout duration based on failed attempts
+                // Calculate progressive lockout duration based on failed attempts and multiplier
                 int failedAttempts = user.getFailedAttempts();
-                long lockoutDuration = 15 * 60 * 1000L * (failedAttempts / 5);
+                int lockoutMultiplier = user.getLockoutMultiplier();
+                long lockoutDuration = 15 * 60 * 1000L * lockoutMultiplier;
 
-                System.out.println("User: " + username + ", Failed Attempts: " + failedAttempts + ", Lockout Time: " + user.getLockoutTime() + ", Lockout Duration: " + lockoutDuration);
+                System.out.println("User: " + username + ", Failed Attempts: " + failedAttempts + ", Lockout Time: " + user.getLockoutTime() + ", Lockout Duration: " + lockoutDuration + ", Lockout Multiplier: " + lockoutMultiplier);
                 System.out.println("Formatted Lockout Time: " + formatLockoutTime(user.getLockoutTime()));
 
                 // Check if user is locked out
@@ -189,19 +190,22 @@ forgotPasswordLbl.setForeground(new java.awt.Color(0, 0, 0));
             clearPasswordField();
             return;
         } else if (user.getLockoutTime() > 0 && currentTime >= user.getLockoutTime() + lockoutDuration) {
-                    // Lockout period expired, reset failed attempts and lockout time
+                    // Lockout period expired, reset failed attempts and lockout time, but increment multiplier
                     db.updateFailedAttempts(username, 0);
                     db.updateLockoutTime(username, 0L);
+                    db.updateLockoutMultiplier(username, lockoutMultiplier + 1);
                     user.setFailedAttempts(0);
                     user.setLockoutTime(0L);
+                    user.setLockoutMultiplier(lockoutMultiplier + 1);
                 }
 
                 // Check password
                 if (BCrypt.checkpw(password, user.getPassword())) {
                     authenticatedUser = user;
-                    // Reset failed attempts and lockout time on successful login
+                    // Reset failed attempts, lockout time, and multiplier on successful login
                     db.updateFailedAttempts(username, 0);
                     db.updateLockoutTime(username, 0L);
+                    db.updateLockoutMultiplier(username, 0);
                     break;
                 } else {
                     // Increment failed attempts
@@ -211,7 +215,8 @@ forgotPasswordLbl.setForeground(new java.awt.Color(0, 0, 0));
                     // Lock account if failed attempts reach multiple of 5
                     if (newFailedAttempts % 5 == 0) {
                         db.updateLockoutTime(username, currentTime);
-                        long lockoutMinutes = 15 * (newFailedAttempts / 5);
+                        long lockoutMinutes = 15 * (lockoutMultiplier + 1);
+                        db.updateLockoutMultiplier(username, lockoutMultiplier + 1);
                         JOptionPane.showMessageDialog(this, "Account locked due to multiple failed login attempts. Please try again after " + lockoutMinutes + " minute" + (lockoutMinutes > 1 ? "s" : "") + ".", "Account Locked", JOptionPane.ERROR_MESSAGE);
                         clearPasswordField();
                         return;

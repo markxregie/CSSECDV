@@ -17,10 +17,13 @@ import java.util.Properties;
 
 public class Frame extends javax.swing.JFrame {
 
+    // Constructor to initialize the frame and components
     public Frame() {
         initComponents();
     }
 
+    /* =================== Start of Password Reset Request Logic =================== */
+    // Handles the password reset request logic
     public void handlePasswordResetRequest(String email) {
         // Clear previous error message
         forgotPasswordPnl.setEmailError("");
@@ -34,6 +37,7 @@ public class Frame extends javax.swing.JFrame {
             return;
         }
 
+        // Check if email exists in the database
         SQLite db = new SQLite();
         if (!db.emailExists(email)) {
             // Show generic message to avoid user enumeration
@@ -44,15 +48,16 @@ JOptionPane.showMessageDialog(this,
             return;
         }
 
-        // Generate secure random token
+        // Generate secure random token for password reset
         String token = java.util.UUID.randomUUID().toString();
         // Set expiry to 1 hour from now
         long expiry = System.currentTimeMillis() + 3600 * 1000;
 
-        // Store token and expiry in DB
+        // Store token and expiry in the database
         db.setPasswordResetToken(email, token, expiry);
 
         try {
+            // Send password reset email with token
             sendPasswordResetEmail(email, token);
         } catch (javax.mail.MessagingException e) {
             JOptionPane.showMessageDialog(this,
@@ -62,6 +67,7 @@ JOptionPane.showMessageDialog(this,
             return;
         }
 
+        // Inform user that reset token has been sent
         JOptionPane.showMessageDialog(this,
             "A password reset token has been sent to your email.\n" +
             "Please check your email for the token and use the Reset Password screen to reset your password.",
@@ -71,7 +77,10 @@ JOptionPane.showMessageDialog(this,
         // Navigate to reset password panel
         resetPasswordNav();
     }
+    
 
+    /* =================== Start of Password Reset Handling Logic =================== */
+    // Handles the logic for resetting the password using the token
     public void handleResetPassword(String token, String newPassword, String confirmPassword) {
         // Clear previous error messages
         resetPasswordPnl.setTokenError("");
@@ -453,7 +462,7 @@ JOptionPane.showMessageDialog(this,
     }
     
     
-
+/* =================== Start of Registration Logic =================== */
 public ValidationResult registerAction(String username, String email, String password, String confirmPassword) {
         ValidationResult result = new ValidationResult();
 

@@ -43,6 +43,7 @@ public class SQLite {
     public void addLockoutColumnsIfNotExist() {
         String sql1 = "ALTER TABLE users ADD COLUMN failed_attempts INTEGER DEFAULT 0";
         String sql2 = "ALTER TABLE users ADD COLUMN lockout_time INTEGER";
+        String sql3 = "ALTER TABLE users ADD COLUMN lockout_multiplier INTEGER DEFAULT 0";
         try (Connection conn = DriverManager.getConnection(driverURL);
              Statement stmt = conn.createStatement()) {
             try {
@@ -59,6 +60,14 @@ public class SQLite {
             } catch (SQLException e) {
                 if (!e.getMessage().contains("duplicate column name")) {
                     System.out.println("Error adding lockout_time column: " + e.getMessage());
+                }
+            }
+            try {
+                stmt.execute(sql3);
+                System.out.println("Column lockout_multiplier added to users table.");
+            } catch (SQLException e) {
+                if (!e.getMessage().contains("duplicate column name")) {
+                    System.out.println("Error adding lockout_multiplier column: " + e.getMessage());
                 }
             }
         } catch (Exception ex) {
@@ -127,6 +136,7 @@ public class SQLite {
                                 rs.getInt("locked"),
                                 rs.getInt("failed_attempts"),
                                 rs.getLong("lockout_time"),
+                                rs.getInt("lockout_multiplier"),
                                 rs.getString("verification_token"),
                                 rs.getInt("verified") == 1);
                 return user;
@@ -536,7 +546,7 @@ public class SQLite {
     }
     
     public ArrayList<User> getUsers(){
-        String sql = "SELECT id, username, password, role, locked, failed_attempts, lockout_time, verification_token, verified FROM users";
+        String sql = "SELECT id, username, password, role, locked, failed_attempts, lockout_time, lockout_multiplier, verification_token, verified FROM users";
         ArrayList<User> users = new ArrayList<User>();
         
         try (Connection conn = DriverManager.getConnection(driverURL);
@@ -551,6 +561,7 @@ public class SQLite {
                                    rs.getInt("locked"),
                                    rs.getInt("failed_attempts"),
                                    rs.getLong("lockout_time"),
+                                   rs.getInt("lockout_multiplier"),
                                    rs.getString("verification_token"),
                                    rs.getInt("verified") == 1));
             }
@@ -660,22 +671,35 @@ public class SQLite {
         }
     }
 
+    public void updateLockoutMultiplier(String username, int lockoutMultiplier) {
+        String sql = "UPDATE users SET lockout_multiplier = ? WHERE username = ?";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, lockoutMultiplier);
+            pstmt.setString(2, username);
+            pstmt.executeUpdate();
+        } catch (Exception e) {
+            System.out.println("Error updating lockout multiplier: " + e.getMessage());
+        }
+    }
+
     public User getUserByUsername(String username) {
-        String sql = "SELECT id, username, password, role, locked, failed_attempts, lockout_time, verification_token, verified FROM users WHERE username = ?";
+        String sql = "SELECT id, username, password, role, locked, failed_attempts, lockout_time, lockout_multiplier, verification_token, verified FROM users WHERE username = ?";
         try (Connection conn = DriverManager.getConnection(driverURL);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, username);
             ResultSet rs = pstmt.executeQuery();
-            if (rs.next()) {
-                return new User(rs.getInt("id"),
-                                rs.getString("username"),
-                                rs.getString("password"),
-                                rs.getInt("role"),
-                                rs.getInt("locked"),
-                                rs.getInt("failed_attempts"),
-                                rs.getLong("lockout_time"),
-                                rs.getString("verification_token"),
-                                rs.getInt("verified") == 1);
+        if (rs.next()) {
+            return new User(rs.getInt("id"),
+                            rs.getString("username"),
+                            rs.getString("password"),
+                            rs.getInt("role"),
+                            rs.getInt("locked"),
+                            rs.getInt("failed_attempts"),
+                            rs.getLong("lockout_time"),
+                            rs.getInt("lockout_multiplier"),
+                            rs.getString("verification_token"),
+                            rs.getInt("verified") == 1);
             }
         } catch (SQLException e) {
             System.out.println("Error fetching user by username: " + e.getMessage());

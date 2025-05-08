@@ -117,35 +117,35 @@ public class SQLite {
     }
 
     // Method to get user by reset token
-    public User getUserByResetToken(String token) {
-        String sql = "SELECT id, username, password, role, locked, failed_attempts, lockout_time, verification_token, verified, reset_token, reset_token_expiry FROM users WHERE reset_token = ?";
-        try (Connection conn = DriverManager.getConnection(driverURL);
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, token);
-            ResultSet rs = pstmt.executeQuery();
-            if (rs.next()) {
-                long expiry = rs.getLong("reset_token_expiry");
-                long now = System.currentTimeMillis();
-                if (expiry < now) {
-                    return null; // token expired
-                }
-                User user = new User(rs.getInt("id"),
-                                rs.getString("username"),
-                                rs.getString("password"),
-                                rs.getInt("role"),
-                                rs.getInt("locked"),
-                                rs.getInt("failed_attempts"),
-                                rs.getLong("lockout_time"),
-                                rs.getInt("lockout_multiplier"),
-                                rs.getString("verification_token"),
-                                rs.getInt("verified") == 1);
-                return user;
+public User getUserByResetToken(String token) {
+    String sql = "SELECT id, username, password, role, locked, failed_attempts, lockout_time, lockout_multiplier, verification_token, verified, reset_token, reset_token_expiry FROM users WHERE reset_token = ?";
+    try (Connection conn = DriverManager.getConnection(driverURL);
+         PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        pstmt.setString(1, token);
+        ResultSet rs = pstmt.executeQuery();
+        if (rs.next()) {
+            long expiry = rs.getLong("reset_token_expiry");
+            long now = System.currentTimeMillis();
+            if (expiry < now) {
+                return null; // token expired
             }
-        } catch (Exception e) {
-            System.out.println("Error fetching user by reset token: " + e.getMessage());
+            User user = new User(rs.getInt("id"),
+                            rs.getString("username"),
+                            rs.getString("password"),
+                            rs.getInt("role"),
+                            rs.getInt("locked"),
+                            rs.getInt("failed_attempts"),
+                            rs.getLong("lockout_time"),
+                            rs.getInt("lockout_multiplier"),
+                            rs.getString("verification_token"),
+                            rs.getInt("verified") == 1);
+            return user;
         }
-        return null;
+    } catch (Exception e) {
+        System.out.println("Error fetching user by reset token: " + e.getMessage());
     }
+    return null;
+}
 
     // Method to clear reset token after password reset
     public void clearResetToken(int userId) {

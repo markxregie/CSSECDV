@@ -513,11 +513,12 @@ public ValidationResult registerAction(String username, String email, String pas
         }
 if (!password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*")) {
     result.passwordError = "Password must contain at least one special character.";
+    return result;
 }
-        if (!password.equals(confirmPassword)) {
-            result.confirmPasswordError = "Passwords do not match.";
-            return result;
-        }
+if (!password.equals(confirmPassword)) {
+    result.confirmPasswordError = "Passwords do not match.";
+    return result;
+}
 
         String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
 

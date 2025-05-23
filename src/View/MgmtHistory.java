@@ -55,14 +55,25 @@ public class MgmtHistory extends javax.swing.JPanel {
         for(int nCtr = 0; nCtr < history.size(); nCtr++){
             if (clientUsername == null || clientUsername.equals(history.get(nCtr).getUsername())) {
                 Product product = sqlite.getProduct(history.get(nCtr).getName());
-                tableModel.addRow(new Object[]{
-                    history.get(nCtr).getUsername(), 
-                    history.get(nCtr).getName(), 
-                    history.get(nCtr).getStock(), 
-                    product.getPrice(), 
-                    product.getPrice() * history.get(nCtr).getStock(), 
-                    history.get(nCtr).getTimestamp()
-                });
+                if (product != null) {
+                    tableModel.addRow(new Object[]{
+                        history.get(nCtr).getUsername(), 
+                        history.get(nCtr).getName(), 
+                        history.get(nCtr).getStock(), 
+                        product.getPrice(), 
+                        product.getPrice() * history.get(nCtr).getStock(), 
+                        history.get(nCtr).getTimestamp()
+                    });
+                } else {
+                    tableModel.addRow(new Object[]{
+                        history.get(nCtr).getUsername(), 
+                        history.get(nCtr).getName(), 
+                        history.get(nCtr).getStock(), 
+                        0.0, 
+                        0.0, 
+                        history.get(nCtr).getTimestamp()
+                    });
+                }
             }
         }
     }

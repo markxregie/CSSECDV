@@ -477,13 +477,14 @@ public User getUserByResetToken(String token) {
         }
     }
 
-    public boolean updateProduct(String name, int stock, double price) {
-        String sql = "UPDATE product SET stock = ?, price = ? WHERE name = ?";
+    public boolean updateProduct(String originalName, String newName, int stock, double price) {
+        String sql = "UPDATE product SET name = ?, stock = ?, price = ? WHERE name = ?";
         try (Connection conn = DriverManager.getConnection(driverURL);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setInt(1, stock);
-            pstmt.setDouble(2, price);
-            pstmt.setString(3, name);
+            pstmt.setString(1, newName);
+            pstmt.setInt(2, stock);
+            pstmt.setDouble(3, price);
+            pstmt.setString(4, originalName);
             int affectedRows = pstmt.executeUpdate();
             return affectedRows > 0;
         } catch (Exception ex) {
@@ -785,21 +786,22 @@ public User getUserByResetToken(String token) {
         try (Connection conn = DriverManager.getConnection(driverURL);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, email);
-            ResultSet rs = pstmt.executeQuery();
-            if (rs.next()) {
-                return new User(rs.getInt("id"),
-                                rs.getString("username"),
-                                rs.getString("password"),
-                                rs.getInt("role"),
-                                rs.getInt("locked"),
-                                rs.getInt("failed_attempts"),
-                                rs.getLong("lockout_time"),
-                                rs.getInt("lockout_multiplier"),
-                                rs.getString("verification_token"),
-                                rs.getInt("verified") == 1,
-                                rs.getInt("forgot_failed_attempts"),
-                                rs.getLong("forgot_lockout_time"),
-                                rs.getInt("forgot_lockout_multiplier"));
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return new User(rs.getInt("id"),
+                                    rs.getString("username"),
+                                    rs.getString("password"),
+                                    rs.getInt("role"),
+                                    rs.getInt("locked"),
+                                    rs.getInt("failed_attempts"),
+                                    rs.getLong("lockout_time"),
+                                    rs.getInt("lockout_multiplier"),
+                                    rs.getString("verification_token"),
+                                    rs.getInt("verified") == 1,
+                                    rs.getInt("forgot_failed_attempts"),
+                                    rs.getLong("forgot_lockout_time"),
+                                    rs.getInt("forgot_lockout_multiplier"));
+                }
             }
         } catch (Exception e) {
             System.out.println("Error fetching user by email: " + e.getMessage());
@@ -812,18 +814,19 @@ public User getUserByResetToken(String token) {
         try (Connection conn = DriverManager.getConnection(driverURL);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, username);
-            ResultSet rs = pstmt.executeQuery();
-        if (rs.next()) {
-            return new User(rs.getInt("id"),
-                            rs.getString("username"),
-                            rs.getString("password"),
-                            rs.getInt("role"),
-                            rs.getInt("locked"),
-                            rs.getInt("failed_attempts"),
-                            rs.getLong("lockout_time"),
-                            rs.getInt("lockout_multiplier"),
-                            rs.getString("verification_token"),
-                            rs.getInt("verified") == 1);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return new User(rs.getInt("id"),
+                                    rs.getString("username"),
+                                    rs.getString("password"),
+                                    rs.getInt("role"),
+                                    rs.getInt("locked"),
+                                    rs.getInt("failed_attempts"),
+                                    rs.getLong("lockout_time"),
+                                    rs.getInt("lockout_multiplier"),
+                                    rs.getString("verification_token"),
+                                    rs.getInt("verified") == 1);
+                }
             }
         } catch (SQLException e) {
             System.out.println("Error fetching user by username: " + e.getMessage());
@@ -837,16 +840,17 @@ public User getUserByResetToken(String token) {
         try (Connection conn = DriverManager.getConnection(driverURL);
              PreparedStatement selectStmt = conn.prepareStatement(selectSql)) {
             selectStmt.setString(1, token);
-            ResultSet rs = selectStmt.executeQuery();
-            if (rs.next()) {
-                int userId = rs.getInt("id");
-                try (PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
-                    updateStmt.setInt(1, userId);
-                    int rowsUpdated = updateStmt.executeUpdate();
-                    return rowsUpdated > 0;
+            try (ResultSet rs = selectStmt.executeQuery()) {
+                if (rs.next()) {
+                    int userId = rs.getInt("id");
+                    try (PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
+                        updateStmt.setInt(1, userId);
+                        int rowsUpdated = updateStmt.executeUpdate();
+                        return rowsUpdated > 0;
+                    }
+                } else {
+                    return false;
                 }
-            } else {
-                return false;
             }
         } catch (SQLException e) {
             System.out.println("Error verifying user by token: " + e.getMessage());

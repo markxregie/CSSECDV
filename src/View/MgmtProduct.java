@@ -400,7 +400,8 @@ public class MgmtProduct extends javax.swing.JPanel {
 
     private void editBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_editBtnActionPerformed
         if(table.getSelectedRow() >= 0){
-            JTextField nameFld = new JTextField(tableModel.getValueAt(table.getSelectedRow(), 0) + "");
+            String originalName = (String) tableModel.getValueAt(table.getSelectedRow(), 0);
+            JTextField nameFld = new JTextField(originalName);
             JTextField stockFld = new JTextField(tableModel.getValueAt(table.getSelectedRow(), 1) + "");
             JTextField priceFld = new JTextField(tableModel.getValueAt(table.getSelectedRow(), 2) + "");
 
@@ -415,11 +416,11 @@ public class MgmtProduct extends javax.swing.JPanel {
             int result = JOptionPane.showConfirmDialog(null, message, "EDIT PRODUCT", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
 
             if (result == JOptionPane.OK_OPTION) {
-                String name = nameFld.getText().trim();
+                String newName = nameFld.getText().trim();
                 String stockStr = stockFld.getText().trim();
                 String priceStr = priceFld.getText().trim();
 
-                if (name.isEmpty() || stockStr.isEmpty() || priceStr.isEmpty()) {
+                if (newName.isEmpty() || stockStr.isEmpty() || priceStr.isEmpty()) {
                     JOptionPane.showMessageDialog(null, "All fields are required.", "Error", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
@@ -433,7 +434,7 @@ public class MgmtProduct extends javax.swing.JPanel {
                         return;
                     }
 
-                    boolean success = sqlite.updateProduct(name, stock, price);
+                    boolean success = sqlite.updateProduct(originalName, newName, stock, price);
                     if (success) {
                         refreshTable();
                         JOptionPane.showMessageDialog(null, "Product updated successfully.", "Success", JOptionPane.INFORMATION_MESSAGE);

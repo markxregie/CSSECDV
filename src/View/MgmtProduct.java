@@ -23,6 +23,8 @@ public class MgmtProduct extends javax.swing.JPanel {
     public DefaultTableModel tableModel;
     private String username;
     
+    private boolean isClientMode = false;
+
     public MgmtProduct(SQLite sqlite) {
         initComponents();
         this.sqlite = sqlite;
@@ -32,7 +34,7 @@ public class MgmtProduct extends javax.swing.JPanel {
         // Add mouse listener for double-click to purchase
         table.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
-                if (evt.getClickCount() == 2 && table.getSelectedRow() >= 0) {
+                if (evt.getClickCount() == 2 && table.getSelectedRow() >= 0 && isClientMode) {
                     purchaseProduct();
                 }
             }
@@ -135,6 +137,7 @@ public class MgmtProduct extends javax.swing.JPanel {
     }
 
     public void setClientMode(boolean isClient) {
+        this.isClientMode = isClient;
         if (isClient) {
             addBtn.setVisible(false);
             editBtn.setVisible(false);

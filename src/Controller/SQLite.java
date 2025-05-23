@@ -660,9 +660,11 @@ public User getUserByResetToken(String token) {
         try (Connection conn = DriverManager.getConnection(driverURL);
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery(sql)){
-            product = new Product(rs.getString("name"),
-                                   rs.getInt("stock"),
-                                   rs.getFloat("price"));
+            if (rs.next()) {
+                product = new Product(rs.getString("name"),
+                                       rs.getInt("stock"),
+                                       rs.getFloat("price"));
+            }
         } catch (Exception ex) {
             System.out.print(ex);
         }
@@ -854,6 +856,48 @@ public User getUserByResetToken(String token) {
             }
         } catch (SQLException e) {
             System.out.println("Error verifying user by token: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean updateUserRole(String username, int newRole) {
+        String sql = "UPDATE users SET role = ? WHERE username = ?";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, newRole);
+            pstmt.setString(2, username);
+            int affectedRows = pstmt.executeUpdate();
+            return affectedRows > 0;
+        } catch (Exception ex) {
+            System.out.println("Error updating user role: " + ex.getMessage());
+            return false;
+        }
+    }
+
+    public boolean updateUserLocked(String username, int locked) {
+        String sql = "UPDATE users SET locked = ? WHERE username = ?";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, locked);
+            pstmt.setString(2, username);
+            int affectedRows = pstmt.executeUpdate();
+            return affectedRows > 0;
+        } catch (Exception ex) {
+            System.out.println("Error updating user locked state: " + ex.getMessage());
+            return false;
+        }
+    }
+
+    public boolean updatePasswordByUsername(String username, String hashedPassword) {
+        String sql = "UPDATE users SET password = ? WHERE username = ?";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, hashedPassword);
+            pstmt.setString(2, username);
+            int affectedRows = pstmt.executeUpdate();
+            return affectedRows > 0;
+        } catch (Exception ex) {
+            System.out.println("Error updating password: " + ex.getMessage());
             return false;
         }
     }

@@ -45,6 +45,8 @@ public class ClientHome extends javax.swing.JPanel {
         Content.add(mgmtHistory, "mgmtHistory");
         Content.add(mgmtProduct, "mgmtProduct");
         Content.add(mgmtLogs, "mgmtLogs");
+
+        mgmtProduct.setClientMode(true); // Enable purchase for client
         
 //        UNCOMMENT TO DISABLE BUTTONS
 //        historyBtn.setVisible(false);

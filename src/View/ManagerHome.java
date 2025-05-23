@@ -44,6 +44,8 @@ public class ManagerHome extends javax.swing.JPanel {
         Content.add(mgmtHistory, "mgmtHistory");
         Content.add(mgmtProduct, "mgmtProduct");
         Content.add(mgmtLogs, "mgmtLogs");
+
+        mgmtProduct.setClientMode(false); // Disable purchase for manager
         
 //        UNCOMMENT TO DISABLE BUTTONS
 //        historyBtn.setVisible(false);

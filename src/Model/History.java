@@ -37,7 +37,7 @@ public class History {
         this.name = name;
         this.stock = stock;
         try {
-            this.timestamp = new Timestamp(dateformat.parse(timestamp).getTime());
+            this.timestamp = new Timestamp(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(timestamp).getTime());
         } catch (ParseException ex) {
             ex.printStackTrace();
         }

@@ -97,6 +97,34 @@ public class SQLite {
                     System.out.println("Error adding reset_token_expiry column: " + e.getMessage());
                 }
             }
+            // Add forgot password lockout columns
+            String sql3 = "ALTER TABLE users ADD COLUMN forgot_failed_attempts INTEGER DEFAULT 0";
+            String sql4 = "ALTER TABLE users ADD COLUMN forgot_lockout_time INTEGER";
+            String sql5 = "ALTER TABLE users ADD COLUMN forgot_lockout_multiplier INTEGER DEFAULT 0";
+            try {
+                stmt.execute(sql3);
+                System.out.println("Column forgot_failed_attempts added to users table.");
+            } catch (SQLException e) {
+                if (!e.getMessage().contains("duplicate column name")) {
+                    System.out.println("Error adding forgot_failed_attempts column: " + e.getMessage());
+                }
+            }
+            try {
+                stmt.execute(sql4);
+                System.out.println("Column forgot_lockout_time added to users table.");
+            } catch (SQLException e) {
+                if (!e.getMessage().contains("duplicate column name")) {
+                    System.out.println("Error adding forgot_lockout_time column: " + e.getMessage());
+                }
+            }
+            try {
+                stmt.execute(sql5);
+                System.out.println("Column forgot_lockout_multiplier added to users table.");
+            } catch (SQLException e) {
+                if (!e.getMessage().contains("duplicate column name")) {
+                    System.out.println("Error adding forgot_lockout_multiplier column: " + e.getMessage());
+                }
+            }
         } catch (Exception ex) {
             System.out.print(ex);
         }
@@ -434,14 +462,46 @@ public User getUserByResetToken(String token) {
         }
     }
     
-    public void addProduct(String name, int stock, double price) {
-        String sql = "INSERT INTO product(name,stock,price) VALUES('" + name + "','" + stock + "','" + price + "')";
-        
+    public boolean addProduct(String name, int stock, double price) {
+        String sql = "INSERT INTO product(name,stock,price) VALUES(?, ?, ?)";
         try (Connection conn = DriverManager.getConnection(driverURL);
-            Statement stmt = conn.createStatement()){
-            stmt.execute(sql);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, name);
+            pstmt.setInt(2, stock);
+            pstmt.setDouble(3, price);
+            int affectedRows = pstmt.executeUpdate();
+            return affectedRows > 0;
         } catch (Exception ex) {
             System.out.print(ex);
+            return false;
+        }
+    }
+
+    public boolean updateProduct(String name, int stock, double price) {
+        String sql = "UPDATE product SET stock = ?, price = ? WHERE name = ?";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, stock);
+            pstmt.setDouble(2, price);
+            pstmt.setString(3, name);
+            int affectedRows = pstmt.executeUpdate();
+            return affectedRows > 0;
+        } catch (Exception ex) {
+            System.out.print(ex);
+            return false;
+        }
+    }
+
+    public boolean deleteProduct(String name) {
+        String sql = "DELETE FROM product WHERE name = ?";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, name);
+            int affectedRows = pstmt.executeUpdate();
+            return affectedRows > 0;
+        } catch (Exception ex) {
+            System.out.print(ex);
+            return false;
         }
     }
     
@@ -681,6 +741,70 @@ public User getUserByResetToken(String token) {
         } catch (Exception e) {
             System.out.println("Error updating lockout multiplier: " + e.getMessage());
         }
+    }
+
+    // Methods for forgot password lockout tracking by email
+    public void updateForgotFailedAttempts(String email, int failedAttempts) {
+        String sql = "UPDATE users SET forgot_failed_attempts = ? WHERE email = ?";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, failedAttempts);
+            pstmt.setString(2, email);
+            pstmt.executeUpdate();
+        } catch (Exception e) {
+            System.out.println("Error updating forgot_failed_attempts: " + e.getMessage());
+        }
+    }
+
+    public void updateForgotLockoutTime(String email, long lockoutTime) {
+        String sql = "UPDATE users SET forgot_lockout_time = ? WHERE email = ?";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setLong(1, lockoutTime);
+            pstmt.setString(2, email);
+            pstmt.executeUpdate();
+        } catch (Exception e) {
+            System.out.println("Error updating forgot_lockout_time: " + e.getMessage());
+        }
+    }
+
+    public void updateForgotLockoutMultiplier(String email, int lockoutMultiplier) {
+        String sql = "UPDATE users SET forgot_lockout_multiplier = ? WHERE email = ?";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, lockoutMultiplier);
+            pstmt.setString(2, email);
+            pstmt.executeUpdate();
+        } catch (Exception e) {
+            System.out.println("Error updating forgot_lockout_multiplier: " + e.getMessage());
+        }
+    }
+
+    public User getUserByEmail(String email) {
+        String sql = "SELECT id, username, password, role, locked, failed_attempts, lockout_time, lockout_multiplier, verification_token, verified, forgot_failed_attempts, forgot_lockout_time, forgot_lockout_multiplier FROM users WHERE email = ?";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, email);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return new User(rs.getInt("id"),
+                                rs.getString("username"),
+                                rs.getString("password"),
+                                rs.getInt("role"),
+                                rs.getInt("locked"),
+                                rs.getInt("failed_attempts"),
+                                rs.getLong("lockout_time"),
+                                rs.getInt("lockout_multiplier"),
+                                rs.getString("verification_token"),
+                                rs.getInt("verified") == 1,
+                                rs.getInt("forgot_failed_attempts"),
+                                rs.getLong("forgot_lockout_time"),
+                                rs.getInt("forgot_lockout_multiplier"));
+            }
+        } catch (Exception e) {
+            System.out.println("Error fetching user by email: " + e.getMessage());
+        }
+        return null;
     }
 
     public User getUserByUsername(String username) {

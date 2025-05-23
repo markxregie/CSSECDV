@@ -12,6 +12,11 @@ public class User {
     private String verificationToken;
     private boolean verified = false;
 
+    // New fields for forgot password lockout
+    private int forgotFailedAttempts = 0;
+    private long forgotLockoutTime = 0L;
+    private int forgotLockoutMultiplier = 0;
+
     public User(String username, String password){
         this.username = username;
         this.password = password;
@@ -28,6 +33,24 @@ public class User {
         this.lockoutMultiplier = lockoutMultiplier;
         this.verificationToken = verificationToken;
         this.verified = verified;
+    }
+
+    // New constructor including forgot password lockout fields
+    public User(int id, String username, String password, int role, int locked, int failedAttempts, long lockoutTime, int lockoutMultiplier, String verificationToken, boolean verified,
+                int forgotFailedAttempts, long forgotLockoutTime, int forgotLockoutMultiplier) {
+        this.id = id;
+        this.username = username;
+        this.password = password;
+        this.role = role;
+        this.locked = locked;
+        this.failedAttempts = failedAttempts;
+        this.lockoutTime = lockoutTime;
+        this.lockoutMultiplier = lockoutMultiplier;
+        this.verificationToken = verificationToken;
+        this.verified = verified;
+        this.forgotFailedAttempts = forgotFailedAttempts;
+        this.forgotLockoutTime = forgotLockoutTime;
+        this.forgotLockoutMultiplier = forgotLockoutMultiplier;
     }
     
     public int getId() {
@@ -108,5 +131,32 @@ public class User {
 
     public void setVerified(boolean verified) {
         this.verified = verified;
+    }
+
+    // Getter and setter for forgotFailedAttempts
+    public int getForgotFailedAttempts() {
+        return forgotFailedAttempts;
+    }
+
+    public void setForgotFailedAttempts(int forgotFailedAttempts) {
+        this.forgotFailedAttempts = forgotFailedAttempts;
+    }
+
+    // Getter and setter for forgotLockoutTime
+    public long getForgotLockoutTime() {
+        return forgotLockoutTime;
+    }
+
+    public void setForgotLockoutTime(long forgotLockoutTime) {
+        this.forgotLockoutTime = forgotLockoutTime;
+    }
+
+    // Getter and setter for forgotLockoutMultiplier
+    public int getForgotLockoutMultiplier() {
+        return forgotLockoutMultiplier;
+    }
+
+    public void setForgotLockoutMultiplier(int forgotLockoutMultiplier) {
+        this.forgotLockoutMultiplier = forgotLockoutMultiplier;
     }
 }

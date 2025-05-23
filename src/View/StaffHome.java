@@ -45,11 +45,25 @@ public class StaffHome extends javax.swing.JPanel {
         Content.add(mgmtProduct, "mgmtProduct");
         Content.add(mgmtLogs, "mgmtLogs");
         
+        mgmtProduct.setStaffMode(true); // Hide purchase button, show add/edit/delete for staff
+        
 //        UNCOMMENT TO DISABLE BUTTONS
 //        historyBtn.setVisible(false);
 //        usersBtn.setVisible(false);
 //        productsBtn.setVisible(false);
 //        logsBtn.setVisible(false);
+    }
+    
+    public void setStaffMode(boolean isStaff) {
+        if (isStaff) {
+            usersBtn.setVisible(false);
+            historyBtn.setVisible(false);
+            logsBtn.setVisible(false);
+        } else {
+            usersBtn.setVisible(true);
+            historyBtn.setVisible(true);
+            logsBtn.setVisible(true);
+        }
     }
     
     public void showPnl(String panelName){

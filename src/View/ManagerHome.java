@@ -52,6 +52,18 @@ public class ManagerHome extends javax.swing.JPanel {
 //        logsBtn.setVisible(false);
     }
     
+    public void setManagerMode(boolean isManager) {
+        if (isManager) {
+            usersBtn.setVisible(false);
+            logsBtn.setVisible(false);
+            mgmtProduct.setManagerMode(true);
+        } else {
+            usersBtn.setVisible(true);
+            logsBtn.setVisible(true);
+            mgmtProduct.setManagerMode(false);
+        }
+    }
+    
     public void showPnl(String panelName){
         contentView.show(Content, panelName);
     }

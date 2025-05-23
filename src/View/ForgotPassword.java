@@ -5,6 +5,10 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
+import javax.swing.Timer;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
 public class ForgotPassword extends JPanel {
 
     public Frame frame;
@@ -15,6 +19,9 @@ public class ForgotPassword extends JPanel {
     private JButton backBtn;
     private JLabel titleLabel;
 
+    private Timer lockoutTimer;
+    private long lockoutEndTime;
+
     public ForgotPassword() {
         initComponents();
     }
@@ -22,6 +29,7 @@ public class ForgotPassword extends JPanel {
     public void clearFields() {
         emailFld.setText("");
         emailErrorLbl.setText("");
+        stopLockoutTimer();
     }
 
     @SuppressWarnings("unchecked")
@@ -63,6 +71,7 @@ public class ForgotPassword extends JPanel {
                 if (frame != null) {
                     emailFld.setText("");
                     emailErrorLbl.setText("");
+                    stopLockoutTimer();
                     frame.loginNav();
                 }
             }
@@ -111,5 +120,34 @@ public class ForgotPassword extends JPanel {
 
     public void setEmailError(String message) {
         emailErrorLbl.setText(message);
+    }
+
+    public void startLockoutTimer(long durationMillis) {
+        lockoutEndTime = System.currentTimeMillis() + durationMillis;
+        if (lockoutTimer != null && lockoutTimer.isRunning()) {
+            lockoutTimer.stop();
+        }
+        lockoutTimer = new Timer(1000, new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                long remaining = lockoutEndTime - System.currentTimeMillis();
+                if (remaining <= 0) {
+                    stopLockoutTimer();
+                    setEmailError("");
+                } else {
+                    long seconds = remaining / 1000;
+                    long minutes = seconds / 60;
+                    long secs = seconds % 60;
+                    setEmailError("Too many attempts. Please try again after " + minutes + "m " + secs + "s.");
+                }
+            }
+        });
+        lockoutTimer.start();
+    }
+
+    public void stopLockoutTimer() {
+        if (lockoutTimer != null) {
+            lockoutTimer.stop();
+            lockoutTimer = null;
+        }
     }
 }

@@ -52,6 +52,16 @@ public class AdminHome extends javax.swing.JPanel {
 //        logsBtn.setVisible(false);
     }
     
+    public void setAdminMode(boolean isAdmin) {
+        if (isAdmin) {
+            productsBtn.setVisible(false);
+            historyBtn.setVisible(false);
+        } else {
+            productsBtn.setVisible(true);
+            historyBtn.setVisible(true);
+        }
+    }
+    
     public void showPnl(String panelName){
         contentView.show(Content, panelName);
     }

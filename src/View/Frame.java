@@ -15,11 +15,86 @@ import javax.mail.*;
 import javax.mail.internet.*;
 import java.util.Properties;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+
 public class Frame extends javax.swing.JFrame {
 
     // Constructor to initialize the frame and components
     public Frame() {
         initComponents();
+    }
+
+    // Utility method to generate 16-bit (2 bytes) salt
+    public static byte[] generateSalt() {
+        SecureRandom random = new SecureRandom();
+        byte[] salt = new byte[2]; // 16 bits = 2 bytes
+        random.nextBytes(salt);
+        return salt;
+    }
+
+    // Utility method to hash password with salt using SHA-256
+    public static String hashPasswordSHA256(String password, byte[] salt) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            md.update(salt);
+            byte[] hashed = md.digest(password.getBytes());
+            // Combine salt + hash and encode as hex for storage
+            byte[] saltAndHash = new byte[salt.length + hashed.length];
+            System.arraycopy(salt, 0, saltAndHash, 0, salt.length);
+            System.arraycopy(hashed, 0, saltAndHash, salt.length, hashed.length);
+            return bytesToHex(saltAndHash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 algorithm not found", e);
+        }
+    }
+
+    // Utility method to verify password with stored hex salt+hash
+    public static boolean verifyPasswordSHA256(String password, String stored) {
+        try {
+            byte[] saltAndHash = hexToBytes(stored);
+            byte[] salt = new byte[2];
+            System.arraycopy(saltAndHash, 0, salt, 0, 2);
+            byte[] hash = new byte[saltAndHash.length - 2];
+            System.arraycopy(saltAndHash, 2, hash, 0, hash.length);
+
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            md.update(salt);
+            byte[] hashedInput = md.digest(password.getBytes());
+
+            if (hashedInput.length != hash.length) {
+                return false;
+            }
+            for (int i = 0; i < hash.length; i++) {
+                if (hashedInput[i] != hash[i]) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    // Utility method to convert byte array to hex string
+    public static String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
+    }
+
+    // Utility method to convert hex string to byte array
+    public static byte[] hexToBytes(String hex) {
+        int len = hex.length();
+        byte[] data = new byte[len / 2];
+        for (int i = 0; i < len; i += 2) {
+            data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4)
+                                 + Character.digit(hex.charAt(i+1), 16));
+        }
+        return data;
     }
 
     /* =================== Start of Password Reset Request Logic =================== */
@@ -37,44 +112,84 @@ public class Frame extends javax.swing.JFrame {
             return;
         }
 
-        // Check if email exists in the database
         SQLite db = new SQLite();
-        if (!db.emailExists(email)) {
+        User user = db.getUserByEmail(email);
+
+        if (user == null) {
             // Show generic message to avoid user enumeration
-JOptionPane.showMessageDialog(this,
+            JOptionPane.showMessageDialog(this,
                 "If the email is registered, you will receive a password reset email.",
                 "Password Reset",
                 JOptionPane.INFORMATION_MESSAGE);
             return;
         }
 
-        // Generate secure random token for password reset
-        String token = java.util.UUID.randomUUID().toString();
-        // Set expiry to 1 hour from now
-        long expiry = System.currentTimeMillis() + 3600 * 1000;
+        long now = System.currentTimeMillis();
+        long lockoutTime = user.getForgotLockoutTime();
 
-        // Store token and expiry in the database
+        if (lockoutTime > now) {
+            long remainingMillis = lockoutTime - now;
+            forgotPasswordPnl.startLockoutTimer(remainingMillis);
+            return;
+        } else if (lockoutTime != 0 && lockoutTime <= now) {
+            // Lockout expired, reset counters
+            db.updateForgotFailedAttempts(email, 0);
+            db.updateForgotLockoutMultiplier(email, 0);
+            db.updateForgotLockoutTime(email, 0);
+            // Refresh user object after reset
+            user = db.getUserByEmail(email);
+        }
+
+        // Increment failed attempts on every reset request to limit abuse
+        int failedAttempts = user.getForgotFailedAttempts() + 1;
+        db.updateForgotFailedAttempts(email, failedAttempts);
+
+        int multiplier = user.getForgotLockoutMultiplier();
+            if (failedAttempts >= 3) {
+                multiplier++;
+                long lockoutDuration = 30 * 60 * 1000L * (long)Math.pow(2, multiplier - 1); // exponential backoff starting at 30 minutes
+                long newLockoutTime = now + lockoutDuration;
+                db.updateForgotLockoutTime(email, newLockoutTime);
+                db.updateForgotLockoutMultiplier(email, multiplier);
+                forgotPasswordPnl.setEmailError("Too many attempts. Please try again after " + (lockoutDuration / 60000) + " minutes.");
+                return;
+            }
+
+        // Proceed with password reset token generation and email sending
+        String token = java.util.UUID.randomUUID().toString();
+        long expiry = now + 3600 * 1000; // 1 hour expiry
+
         db.setPasswordResetToken(email, token, expiry);
 
         try {
-            // Send password reset email with token
             sendPasswordResetEmail(email, token);
+
         } catch (javax.mail.MessagingException e) {
-            JOptionPane.showMessageDialog(this,
-                "Failed to send password reset email. Please try again later.",
-                "Email Error",
-                JOptionPane.ERROR_MESSAGE);
+            // On failure, increment failed attempts and possibly lockout
+            // This block is now redundant due to increment above, but kept for safety
+            int failedAttemptsCatch = user.getForgotFailedAttempts() + 1;
+            db.updateForgotFailedAttempts(email, failedAttemptsCatch);
+
+            int multiplierCatch = user.getForgotLockoutMultiplier();
+            if (failedAttemptsCatch >= 3) {
+                multiplierCatch++;
+                long lockoutDurationCatch = 5 * 60 * 1000L * (long)Math.pow(2, multiplierCatch - 1);
+                long newLockoutTimeCatch = now + lockoutDurationCatch;
+                db.updateForgotLockoutTime(email, newLockoutTimeCatch);
+                db.updateForgotLockoutMultiplier(email, multiplierCatch);
+                forgotPasswordPnl.setEmailError("Too many attempts. Please try again after " + (lockoutDurationCatch / 60000) + " minutes.");
+            } else {
+                forgotPasswordPnl.setEmailError("Failed to send password reset email. Please try again later.");
+            }
             return;
         }
 
-        // Inform user that reset token has been sent
         JOptionPane.showMessageDialog(this,
             "A password reset token has been sent to your email.\n" +
             "Please check your email for the token and use the Reset Password screen to reset your password.",
             "Password Reset",
             JOptionPane.INFORMATION_MESSAGE);
 
-        // Navigate to reset password panel
         resetPasswordNav();
     }
     
@@ -139,8 +254,9 @@ JOptionPane.showMessageDialog(this,
             return;
         }
 
-        // Hash the new password
-        String hashedPassword = org.mindrot.jbcrypt.BCrypt.hashpw(newPassword, org.mindrot.jbcrypt.BCrypt.gensalt());
+        // Hash the new password with SHA-256 + 16-bit salt
+        byte[] salt = generateSalt();
+        String hashedPassword = hashPasswordSHA256(newPassword, salt);
 
         // Update password in DB
         db.updatePassword(user.getId(), hashedPassword);
@@ -471,8 +587,8 @@ public ValidationResult registerAction(String username, String email, String pas
             result.usernameError = "Username must be between 3 and 20 characters.";
             return result;
         }
-        if (!usernameLower.matches("^[a-z0-9_]+$")) {
-            result.usernameError = "Username can only contain letters, digits, and underscores.";
+        if (!usernameLower.matches("^(?=.*[a-z0-9])[a-z0-9_]+$")) {
+            result.usernameError = "Invalid Input";
             return result;
         }
 
@@ -520,7 +636,8 @@ if (!password.equals(confirmPassword)) {
     return result;
 }
 
-        String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
+        byte[] salt = generateSalt();
+        String hashedPassword = hashPasswordSHA256(password, salt);
 
         // Generate verification token
         String verificationToken = UUID.randomUUID().toString();
@@ -609,7 +726,7 @@ public static class ValidationResult {
     private javax.swing.JButton staffBtn;
     // End of variables declaration                   
 
-    public void showAdminHome() {
+    public void showAdminHome(int role) {
         adminBtn.doClick();
         mainNav();
         // Show only admin button, hide others
@@ -617,9 +734,15 @@ public static class ValidationResult {
         managerBtn.setVisible(false);
         staffBtn.setVisible(false);
         clientBtn.setVisible(false);
+        // Set admin mode in adminHomePnl based on role
+        if (role == 5) {
+            adminHomePnl.setAdminMode(true);
+        } else {
+            adminHomePnl.setAdminMode(false);
+        }
     }
 
-    public void showManagerHome() {
+    public void showManagerHome(int role) {
         managerBtn.doClick();
         mainNav();
         // Show only manager button, hide others
@@ -627,9 +750,15 @@ public static class ValidationResult {
         managerBtn.setVisible(true);
         staffBtn.setVisible(false);
         clientBtn.setVisible(false);
+        // Set manager mode in managerHomePnl based on role
+        if (role == 4) {
+            managerHomePnl.setManagerMode(true);
+        } else {
+            managerHomePnl.setManagerMode(false);
+        }
     }
 
-    public void showStaffHome() {
+    public void showStaffHome(int role) {
         staffBtn.doClick();
         mainNav();
         // Show only staff button, hide others
@@ -637,9 +766,15 @@ public static class ValidationResult {
         managerBtn.setVisible(false);
         staffBtn.setVisible(true);
         clientBtn.setVisible(false);
+        // Set staff mode in staffHomePnl based on role
+        if (role == 3) {
+            staffHomePnl.setStaffMode(true);
+        } else {
+            staffHomePnl.setStaffMode(false);
+        }
     }
 
-    public void showClientHome() {
+    public void showClientHome(int role, String username) {
         clientBtn.doClick();
         mainNav();
         // Show only client button, hide others
@@ -647,5 +782,13 @@ public static class ValidationResult {
         managerBtn.setVisible(false);
         staffBtn.setVisible(false);
         clientBtn.setVisible(true);
+        // Set client mode in clientHomePnl based on role
+        if (role == 2) {
+            clientHomePnl.setClientMode(true);
+            clientHomePnl.setClientUsername(username);
+        } else {
+            clientHomePnl.setClientMode(false);
+            clientHomePnl.setClientUsername(null);
+        }
     }
 }

@@ -1,9 +1,8 @@
-package View;
+ package View;
 
 import Model.User;
 import Controller.SQLite;
 import javax.swing.*;
-import org.mindrot.jbcrypt.BCrypt;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -200,7 +199,7 @@ forgotPasswordLbl.setForeground(new java.awt.Color(0, 0, 0));
                 }
 
                 // Check password
-                if (BCrypt.checkpw(password, user.getPassword())) {
+                if (Frame.verifyPasswordSHA256(password, user.getPassword())) {
                     authenticatedUser = user;
                     // Reset failed attempts, lockout time, and multiplier on successful login
                     db.updateFailedAttempts(username, 0);
@@ -233,19 +232,19 @@ forgotPasswordLbl.setForeground(new java.awt.Color(0, 0, 0));
             int role = authenticatedUser.getRole();
             switch (role) {
                 case 5:
-                    frame.showAdminHome();
+                    frame.showAdminHome(role);
                     break;
                 case 4:
-                    frame.showManagerHome();
+                    frame.showManagerHome(role);
                     break;
                 case 3:
-                    frame.showStaffHome();
+                    frame.showStaffHome(role);
                     break;
                 case 2:
-                    frame.showClientHome();
+                    frame.showClientHome(role, authenticatedUser.getUsername());
                     break;
                 default:
-                    frame.showClientHome();
+                    frame.showClientHome(2, authenticatedUser.getUsername());
                     break;
             }
         } else {

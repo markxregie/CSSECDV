@@ -27,6 +27,7 @@ public class ClientHome extends javax.swing.JPanel {
     public MgmtUser mgmtUser;
     
     private CardLayout contentView = new CardLayout();
+    private String username;  // Add this field to store logged-in username
     
     public ClientHome() {
         initComponents();
@@ -50,6 +51,27 @@ public class ClientHome extends javax.swing.JPanel {
 //        usersBtn.setVisible(false);
 //        productsBtn.setVisible(false);
 //        logsBtn.setVisible(false);
+    }
+    
+    public void setClientMode(boolean isClient) {
+        if (isClient) {
+            usersBtn.setVisible(false);
+            historyBtn.setVisible(true);
+            logsBtn.setVisible(false);
+            // Disable add, edit, delete buttons in mgmtProduct panel
+            mgmtProduct.setClientMode(true);
+        } else {
+            usersBtn.setVisible(true);
+            historyBtn.setVisible(true);
+            logsBtn.setVisible(true);
+            mgmtProduct.setClientMode(false);
+        }
+    }
+    
+    public void setClientUsername(String username) {
+        this.username = username;  // store username
+        mgmtHistory.setClientUser(username);
+        mgmtProduct.setUsername(username); // set username in mgmtProduct for purchase saving
     }
     
     public void showPnl(String panelName){
@@ -174,6 +196,7 @@ public class ClientHome extends javax.swing.JPanel {
     }//GEN-LAST:event_productsBtnActionPerformed
 
     private void historyBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_historyBtnActionPerformed
+        mgmtHistory.setClientUser(username); // pass the logged-in username to filter history
         mgmtHistory.init();
         usersBtn.setForeground(Color.black);
         productsBtn.setForeground(Color.black);

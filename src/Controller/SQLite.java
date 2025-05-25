@@ -904,4 +904,14 @@ public User getUserByResetToken(String token) {
             return false;
         }
     }
+
+    public void clearLogs() {
+        String sql = "DELETE FROM logs";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+             Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+        } catch (Exception ex) {
+            System.out.println("Error clearing logs: " + ex.getMessage());
+        }
+    }
 }

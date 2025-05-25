@@ -29,7 +29,9 @@ import javax.swing.Timer;
 public class Frame extends javax.swing.JFrame {
 
     private Timer idleTimer;
-    private final int IDLE_TIMEOUT = 15 * 60 * 1000; // 15 minutes in milliseconds
+    private Timer warningTimer;
+    private final int IDLE_TIMEOUT = 2 * 60 * 1000; // 2 minutes in milliseconds for testing
+    private final int WARNING_TIMEOUT = 60 * 1000; // 1 minute warning timeout
 
     // Constructor to initialize the frame and components
     public Frame() {
@@ -38,10 +40,10 @@ public class Frame extends javax.swing.JFrame {
     }
 
     private void setupIdleTimer() {
-        // Create a Swing Timer that triggers logout after IDLE_TIMEOUT
+        // Create a Swing Timer that triggers warning after IDLE_TIMEOUT
         idleTimer = new Timer(IDLE_TIMEOUT, e -> {
-            // Perform automatic logout on idle timeout
-            automaticLogout();
+            // Show warning dialog on idle timeout
+            showIdleWarningDialog();
         });
         idleTimer.setRepeats(false);
         idleTimer.start();
@@ -57,20 +59,72 @@ public class Frame extends javax.swing.JFrame {
     }
 
     private void resetIdleTimer() {
+        if (warningTimer != null && warningTimer.isRunning()) {
+            warningTimer.stop();
+        }
         if (idleTimer != null) {
             idleTimer.restart();
         }
     }
 
+    private void showIdleWarningDialog() {
+        // Create a modal dialog with countdown to logout
+        javax.swing.SwingUtilities.invokeLater(() -> {
+            final javax.swing.JDialog dialog = new javax.swing.JDialog(this, "Session Timeout Warning", true);
+            dialog.setSize(400, 150);
+            dialog.setLocationRelativeTo(this);
+            dialog.setLayout(new java.awt.BorderLayout());
+
+            javax.swing.JLabel messageLabel = new javax.swing.JLabel("You will be logged out in 60 seconds due to inactivity.", javax.swing.SwingConstants.CENTER);
+            dialog.add(messageLabel, java.awt.BorderLayout.CENTER);
+
+            javax.swing.JPanel buttonPanel = new javax.swing.JPanel();
+            javax.swing.JButton continueBtn = new javax.swing.JButton("Continue Session");
+            javax.swing.JButton logoutBtn = new javax.swing.JButton("Logout Now");
+            buttonPanel.add(continueBtn);
+            buttonPanel.add(logoutBtn);
+            dialog.add(buttonPanel, java.awt.BorderLayout.SOUTH);
+
+            // Timer for countdown
+            final int[] countdown = {60};
+            javax.swing.Timer countdownTimer = new javax.swing.Timer(1000, null);
+            countdownTimer.addActionListener(ev -> {
+                countdown[0]--;
+                if (countdown[0] > 0) {
+                    messageLabel.setText("You will be logged out in " + countdown[0] + " seconds due to inactivity.");
+                } else {
+                    countdownTimer.stop();
+                    dialog.dispose();
+                    automaticLogout();
+                }
+            });
+            countdownTimer.start();
+
+            continueBtn.addActionListener(ev -> {
+                countdownTimer.stop();
+                dialog.dispose();
+                resetIdleTimer();
+            });
+
+            logoutBtn.addActionListener(ev -> {
+                countdownTimer.stop();
+                dialog.dispose();
+                automaticLogout();
+            });
+
+            dialog.setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
+            dialog.setVisible(true);
+        });
+    }
+
     private void automaticLogout() {
-        // Show confirmation dialog or directly logout
-        // Here, we directly logout without confirmation
+        // Perform logout actions
         javax.swing.SwingUtilities.invokeLater(() -> {
             // Clear login fields using public method
             loginPnl.clearFields();
             // Show login panel
             frameView.show(Container, "loginPnl");
-            // Optionally show a message
+            // Show logout message
             javax.swing.JOptionPane.showMessageDialog(this, "You have been logged out due to inactivity.", "Logged Out", javax.swing.JOptionPane.INFORMATION_MESSAGE);
         });
     }

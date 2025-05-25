@@ -1,4 +1,4 @@
- package View;
+package View;
 
 import Model.User;
 import Controller.SQLite;
@@ -16,6 +16,9 @@ public class Login extends javax.swing.JPanel {
     public Login() {
         initComponents();
     }
+
+    // Import CaptchaDialog
+    private CaptchaDialog captchaDialog;
 
     // Utility method to convert long timestamp to formatted date/time string
     private String formatLockoutTime(long timestamp) {
@@ -145,6 +148,14 @@ forgotPasswordLbl.setForeground(new java.awt.Color(0, 0, 0));
     }
 
     private void loginBtnActionPerformed(java.awt.event.ActionEvent evt) {
+        // Show captcha dialog before login validation
+        captchaDialog = new CaptchaDialog(frame);
+        captchaDialog.setVisible(true);
+        if (!captchaDialog.isVerifiedSuccessfully()) {
+            JOptionPane.showMessageDialog(this, "Captcha verification failed. Please try again.", "Captcha Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
         String username = usernameFld.getText().trim();
         String password = new String(passwordFld.getPassword()).trim();
 
@@ -233,7 +244,8 @@ forgotPasswordLbl.setForeground(new java.awt.Color(0, 0, 0));
             }
         }
 
-        if (authenticatedUser != null) {
+if (authenticatedUser != null) {
+            JOptionPane.showMessageDialog(this, "Login successful.", "Success", JOptionPane.INFORMATION_MESSAGE);
             int role = authenticatedUser.getRole();
             switch (role) {
                 case 5:

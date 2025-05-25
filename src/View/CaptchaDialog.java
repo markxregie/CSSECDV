@@ -14,6 +14,7 @@ public class CaptchaDialog extends JDialog {
     private JButton verifyBtn;
     private JLabel statusLabel;
     private boolean verifiedSuccessfully = false;
+    private int failedAttempts = 0;  // Track failed attempts
 
     private final CaptchaService captchaService = new CaptchaService();
 
@@ -48,9 +49,16 @@ verifyBtn.addActionListener(new ActionListener() {
                     verifiedSuccessfully = true;
                     dispose();
                 } else {
-                    statusLabel.setText("Incorrect captcha. Please try again.");
-                    generateCaptcha();
-                    captchaInput.setText("");
+                    failedAttempts++;
+                    if (failedAttempts >= 5) {
+                        statusLabel.setText("Maximum attempts reached. Please try again.");
+                        verifyBtn.setEnabled(false);
+                        captchaInput.setEnabled(false);
+                    } else {
+                        statusLabel.setText("Incorrect captcha. Please try again.");
+                        generateCaptcha();
+                        captchaInput.setText("");
+                    }
                 }
             }
         });

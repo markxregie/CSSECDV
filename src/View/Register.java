@@ -3,9 +3,13 @@ package View;
 import View.Frame.ValidationResult;
 import javax.swing.*;
 
+import View.CaptchaDialog;
+
 public class Register extends javax.swing.JPanel {
 
     public Frame frame;
+
+    private CaptchaDialog captchaDialog;
 
     public Register() {
         initComponents();
@@ -41,6 +45,12 @@ public class Register extends javax.swing.JPanel {
         registerBtn.setText("REGISTER");
         registerBtn.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
+                captchaDialog = new CaptchaDialog(frame);
+                captchaDialog.setVisible(true);
+                if (!captchaDialog.isVerifiedSuccessfully()) {
+                    JOptionPane.showMessageDialog(null, "Captcha verification failed. Please try again.", "Captcha Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
                 registerBtnActionPerformed(evt);
             }
         });

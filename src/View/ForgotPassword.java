@@ -9,9 +9,13 @@ import javax.swing.Timer;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
+import View.CaptchaDialog;
+
 public class ForgotPassword extends JPanel {
 
     public Frame frame;
+
+    private CaptchaDialog captchaDialog;
 
     private JTextField emailFld;
     private JLabel emailErrorLbl;
@@ -58,6 +62,12 @@ public class ForgotPassword extends JPanel {
         resetBtn.setPreferredSize(new java.awt.Dimension(350, 52));
         resetBtn.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
+                captchaDialog = new CaptchaDialog(frame);
+                captchaDialog.setVisible(true);
+                if (!captchaDialog.isVerifiedSuccessfully()) {
+                    JOptionPane.showMessageDialog(null, "Captcha verification failed. Please try again.", "Captcha Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
                 if (frame != null) {
                     frame.handlePasswordResetRequest(emailFld.getText());
                 }

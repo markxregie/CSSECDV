@@ -19,11 +19,60 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 
+import java.awt.AWTEvent;
+import java.awt.Toolkit;
+import java.awt.event.AWTEventListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+import javax.swing.Timer;
+
 public class Frame extends javax.swing.JFrame {
+
+    private Timer idleTimer;
+    private final int IDLE_TIMEOUT = 15 * 60 * 1000; // 15 minutes in milliseconds
 
     // Constructor to initialize the frame and components
     public Frame() {
         initComponents();
+        setupIdleTimer();
+    }
+
+    private void setupIdleTimer() {
+        // Create a Swing Timer that triggers logout after IDLE_TIMEOUT
+        idleTimer = new Timer(IDLE_TIMEOUT, e -> {
+            // Perform automatic logout on idle timeout
+            automaticLogout();
+        });
+        idleTimer.setRepeats(false);
+        idleTimer.start();
+
+        // Add global AWT event listener to detect user activity (mouse and keyboard)
+        Toolkit.getDefaultToolkit().addAWTEventListener(new AWTEventListener() {
+            public void eventDispatched(AWTEvent event) {
+                if (event instanceof MouseEvent || event instanceof KeyEvent) {
+                    resetIdleTimer();
+                }
+            }
+        }, AWTEvent.MOUSE_EVENT_MASK | AWTEvent.MOUSE_MOTION_EVENT_MASK | AWTEvent.KEY_EVENT_MASK);
+    }
+
+    private void resetIdleTimer() {
+        if (idleTimer != null) {
+            idleTimer.restart();
+        }
+    }
+
+    private void automaticLogout() {
+        // Show confirmation dialog or directly logout
+        // Here, we directly logout without confirmation
+        javax.swing.SwingUtilities.invokeLater(() -> {
+            // Clear login fields using public method
+            loginPnl.clearFields();
+            // Show login panel
+            frameView.show(Container, "loginPnl");
+            // Optionally show a message
+            javax.swing.JOptionPane.showMessageDialog(this, "You have been logged out due to inactivity.", "Logged Out", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+        });
     }
 
     // Utility method to generate 16-bit (2 bytes) salt
@@ -260,6 +309,12 @@ public class Frame extends javax.swing.JFrame {
 
         // Update password in DB
         db.updatePassword(user.getId(), hashedPassword);
+
+        // Log the password reset event
+        String event = "Password Reset";
+        String desc = "User " + user.getUsername() + " reset their password.";
+        String timestamp = new java.sql.Timestamp(new java.util.Date().getTime()).toString();
+        db.addLogs(event, user.getUsername(), desc, timestamp);
 
         // Clear reset token
         db.clearResetToken(user.getId());
@@ -523,6 +578,7 @@ public class Frame extends javax.swing.JFrame {
         this.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         this.setTitle("CSSECDV - SECURITY Svcs");
         this.setLocationRelativeTo(null);
+        this.setSize(1200, 800); // Increase width and height for all users
 
         this.main = controller;
         loginPnl.frame = this;
@@ -642,9 +698,15 @@ if (!password.equals(confirmPassword)) {
         // Generate verification token
         String verificationToken = UUID.randomUUID().toString();
 
-        boolean success = db.insertUser(usernameLower, email, hashedPassword, verificationToken);
+            boolean success = db.insertUser(usernameLower, email, hashedPassword, verificationToken);
 
             if (success) {
+                // Log the registration event
+                String event = "User Registration";
+                String desc = "User " + usernameLower + " registered an account.";
+                String timestamp = new java.sql.Timestamp(new java.util.Date().getTime()).toString();
+                db.addLogs(event, usernameLower, desc, timestamp);
+
                 // Send verification email
                 try {
                     sendVerificationEmail(email, verificationToken);

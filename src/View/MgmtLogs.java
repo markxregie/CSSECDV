@@ -139,10 +139,20 @@ public class MgmtLogs extends javax.swing.JPanel {
     }//GEN-LAST:event_clearBtnActionPerformed
 
     private void debugBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_debugBtnActionPerformed
-        if(sqlite.DEBUG_MODE == 1)
+        if(sqlite.DEBUG_MODE == 1) {
             sqlite.DEBUG_MODE = 0;
-        else
+            debugBtn.setText("ENABLE DEBUG MODE");
+            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            String formattedDate = java.time.LocalDateTime.now().format(formatter);
+            sqlite.addLogs("DEBUG MODE", "SYSTEM", "Debug mode disabled", formattedDate);
+        } else {
             sqlite.DEBUG_MODE = 1;
+            debugBtn.setText("DISABLE DEBUG MODE");
+            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            String formattedDate = java.time.LocalDateTime.now().format(formatter);
+            sqlite.addLogs("DEBUG MODE", "SYSTEM", "Debug mode enabled", formattedDate);
+        }
+        init(); // Refresh logs table to reflect debug mode changes
     }//GEN-LAST:event_debugBtnActionPerformed
 
 

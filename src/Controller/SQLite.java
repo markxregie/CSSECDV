@@ -452,6 +452,9 @@ public User getUserByResetToken(String token) {
     }
     
     public void addLogs(String event, String username, String desc, String timestamp) {
+        if (DEBUG_MODE == 1) {
+            desc = "[DEBUG] " + desc;
+        }
         String sql = "INSERT INTO logs(event,username,desc,timestamp) VALUES('" + event + "','" + username + "','" + desc + "','" + timestamp + "')";
         
         try (Connection conn = DriverManager.getConnection(driverURL);

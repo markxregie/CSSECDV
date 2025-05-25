@@ -46,7 +46,18 @@ public class Logs {
         try {
             this.timestamp = new Timestamp(dateformat.parse(timestamp).getTime());
         } catch (ParseException ex) {
-            ex.printStackTrace();
+            try {
+                // Try parsing without milliseconds
+                java.text.SimpleDateFormat sdfNoMillis = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                this.timestamp = new Timestamp(sdfNoMillis.parse(timestamp).getTime());
+            } catch (ParseException ex2) {
+                try {
+                    java.time.LocalDateTime ldt = java.time.LocalDateTime.parse(timestamp);
+                    this.timestamp = Timestamp.valueOf(ldt);
+                } catch (Exception e) {
+                    ex.printStackTrace();
+                }
+            }
         }
     }
     

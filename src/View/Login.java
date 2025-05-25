@@ -161,6 +161,11 @@ forgotPasswordLbl.setForeground(new java.awt.Color(0, 0, 0));
 
         for (User user : db.getUsers()) {
             if (user.getUsername().equalsIgnoreCase(username)) {
+                if (user.getLocked() == 1 || user.getRole() == 1) {
+                    JOptionPane.showMessageDialog(this, "Invalid username or password.", "Login Error", JOptionPane.ERROR_MESSAGE);
+                    clearPasswordField();
+                    return;
+                }
                 long currentTime = System.currentTimeMillis();
                 // Calculate progressive lockout duration based on failed attempts and multiplier
                 int failedAttempts = user.getFailedAttempts();

@@ -28,12 +28,6 @@ public class MgmtHistory extends javax.swing.JPanel {
         this.sqlite = sqlite;
         tableModel = (DefaultTableModel)table.getModel();
         table.getTableHeader().setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 14));
-        javax.swing.table.DefaultTableCellRenderer rightAlign = new javax.swing.table.DefaultTableCellRenderer();
-        rightAlign.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
-        table.getColumnModel().getColumn(2).setCellRenderer(rightAlign);
-        table.getColumnModel().getColumn(3).setCellRenderer(rightAlign);
-        table.getColumnModel().getColumn(4).setCellRenderer(rightAlign);
-        table.getColumnModel().getColumn(5).setCellRenderer(rightAlign);
         
 //        UNCOMMENT TO DISABLE BUTTONS
 //        searchBtn.setVisible(false);
@@ -45,35 +39,25 @@ public class MgmtHistory extends javax.swing.JPanel {
     }
 
     public void init(){
-//      CLEAR TABLE
+        // CLEAR TABLE
         for(int nCtr = tableModel.getRowCount(); nCtr > 0; nCtr--){
             tableModel.removeRow(0);
         }
         
-//      LOAD CONTENTS
+        // LOAD PURCHASE HISTORY
         ArrayList<History> history = sqlite.getHistory();
         for(int nCtr = 0; nCtr < history.size(); nCtr++){
-            if (clientUsername == null || clientUsername.equals(history.get(nCtr).getUsername())) {
-                Product product = sqlite.getProduct(history.get(nCtr).getName());
-                if (product != null) {
-                    tableModel.addRow(new Object[]{
-                        history.get(nCtr).getUsername(), 
-                        history.get(nCtr).getName(), 
-                        history.get(nCtr).getStock(), 
-                        product.getPrice(), 
-                        product.getPrice() * history.get(nCtr).getStock(), 
-                        history.get(nCtr).getTimestamp()
-                    });
-                } else {
-                    tableModel.addRow(new Object[]{
-                        history.get(nCtr).getUsername(), 
-                        history.get(nCtr).getName(), 
-                        history.get(nCtr).getStock(), 
-                        0.0, 
-                        0.0, 
-                        history.get(nCtr).getTimestamp()
-                    });
-                }
+            History h = history.get(nCtr);
+            if(clientUsername == null || clientUsername.equals(h.getUsername())){
+                Product product = sqlite.getProduct(h.getName());
+                tableModel.addRow(new Object[]{
+                    h.getUsername(),
+                    h.getName(),
+                    h.getStock(),
+                    product != null ? product.getPrice() : 0.0,
+                    product != null ? product.getPrice() * h.getStock() : 0.0,
+                    h.getTimestamp()
+                });
             }
         }
     }
@@ -109,7 +93,7 @@ public class MgmtHistory extends javax.swing.JPanel {
                 {null, null, null, null, null, null}
             },
             new String [] {
-                "Username", "Name", "Stock", "Price", "Total", "Timestamp"
+                "Username", "Product Name", "Quantity", "Price per Unit", "Total Price", "Timestamp"
             }
         ) {
             boolean[] canEdit = new boolean [] {
@@ -123,13 +107,14 @@ public class MgmtHistory extends javax.swing.JPanel {
         table.setRowHeight(24);
         table.getTableHeader().setReorderingAllowed(false);
         jScrollPane1.setViewportView(table);
+        table.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_OFF);
         if (table.getColumnModel().getColumnCount() > 0) {
             table.getColumnModel().getColumn(0).setPreferredWidth(160);
-            table.getColumnModel().getColumn(1).setPreferredWidth(160);
-            table.getColumnModel().getColumn(2).setMinWidth(80);
-            table.getColumnModel().getColumn(3).setMinWidth(100);
-            table.getColumnModel().getColumn(4).setMinWidth(100);
-            table.getColumnModel().getColumn(5).setPreferredWidth(240);
+            table.getColumnModel().getColumn(1).setPreferredWidth(200);
+            table.getColumnModel().getColumn(2).setPreferredWidth(100);
+            table.getColumnModel().getColumn(3).setPreferredWidth(120);
+            table.getColumnModel().getColumn(4).setPreferredWidth(120);
+            table.getColumnModel().getColumn(5).setPreferredWidth(210);
         }
 
         searchBtn.setBackground(new java.awt.Color(255, 255, 255));
@@ -177,7 +162,7 @@ public class MgmtHistory extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
     private void searchBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_searchBtnActionPerformed
-        JTextField searchFld = new JTextField("0");
+        JTextField searchFld = new JTextField("");
         designer(searchFld, "SEARCH USERNAME OR PRODUCT");
 
         Object[] message = {
@@ -187,27 +172,29 @@ public class MgmtHistory extends javax.swing.JPanel {
         int result = JOptionPane.showConfirmDialog(null, message, "SEARCH HISTORY", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
 
         if (result == JOptionPane.OK_OPTION) {
-//          CLEAR TABLE
+            // CLEAR TABLE
             for(int nCtr = tableModel.getRowCount(); nCtr > 0; nCtr--){
                 tableModel.removeRow(0);
             }
 
-//          LOAD CONTENTS
+            // LOAD CONTENTS
             ArrayList<History> history = sqlite.getHistory();
+            String searchText = searchFld.getText().toLowerCase().trim();
             for(int nCtr = 0; nCtr < history.size(); nCtr++){
-                if(searchFld.getText().contains(history.get(nCtr).getUsername()) || 
-                   history.get(nCtr).getUsername().contains(searchFld.getText()) || 
-                   searchFld.getText().contains(history.get(nCtr).getName()) || 
-                   history.get(nCtr).getName().contains(searchFld.getText())){
+                History h = history.get(nCtr);
+                if((clientUsername == null || clientUsername.equals(h.getUsername())) &&
+                   (h.getUsername().toLowerCase().contains(searchText) || 
+                    h.getName().toLowerCase().contains(searchText) || 
+                    searchText.isEmpty())){
                 
-                    Product product = sqlite.getProduct(history.get(nCtr).getName());
+                    Product product = sqlite.getProduct(h.getName());
                     tableModel.addRow(new Object[]{
-                        history.get(nCtr).getUsername(), 
-                        history.get(nCtr).getName(), 
-                        history.get(nCtr).getStock(), 
-                        product.getPrice(), 
-                        product.getPrice() * history.get(nCtr).getStock(), 
-                        history.get(nCtr).getTimestamp()
+                        h.getUsername(), 
+                        h.getName(), 
+                        h.getStock(), 
+                        product != null ? product.getPrice() : 0.0, 
+                        product != null ? product.getPrice() * h.getStock() : 0.0, 
+                        h.getTimestamp()
                     });
                 }
             }

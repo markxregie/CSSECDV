@@ -31,6 +31,11 @@ public class MgmtUser extends javax.swing.JPanel {
         tableModel = (DefaultTableModel)table.getModel();
         table.getTableHeader().setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 14));
         
+        // Hide the password column for security purposes
+        if (table.getColumnModel().getColumnCount() > 1) {
+            table.removeColumn(table.getColumnModel().getColumn(1));
+        }
+        
 //        UNCOMMENT TO DISABLE BUTTONS
 //        editBtn.setVisible(false);
 //        deleteBtn.setVisible(false);

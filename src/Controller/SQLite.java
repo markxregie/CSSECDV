@@ -466,6 +466,10 @@ public User getUserByResetToken(String token) {
     }
     
     public boolean addProduct(String name, int stock, double price) {
+        if (productExistsIgnoreCase(name)) {
+            System.out.println("Product already exists (case-insensitive check).");
+            return false;
+        }
         String sql = "INSERT INTO product(name,stock,price) VALUES(?, ?, ?)";
         try (Connection conn = DriverManager.getConnection(driverURL);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -481,6 +485,10 @@ public User getUserByResetToken(String token) {
     }
 
     public boolean updateProduct(String originalName, String newName, int stock, double price) {
+        if (!originalName.equalsIgnoreCase(newName) && productExistsIgnoreCase(newName)) {
+            System.out.println("Product already exists (case-insensitive check).");
+            return false;
+        }
         String sql = "UPDATE product SET name = ?, stock = ?, price = ? WHERE name = ?";
         try (Connection conn = DriverManager.getConnection(driverURL);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -494,6 +502,21 @@ public User getUserByResetToken(String token) {
             System.out.print(ex);
             return false;
         }
+    }
+
+    public boolean productExistsIgnoreCase(String name) {
+        String sql = "SELECT COUNT(*) FROM product WHERE LOWER(name) = LOWER(?)";
+        try (Connection conn = DriverManager.getConnection(driverURL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, name);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+        } catch (Exception ex) {
+            System.out.print(ex);
+        }
+        return false;
     }
 
     public boolean deleteProduct(String name) {
@@ -575,6 +598,28 @@ public User getUserByResetToken(String token) {
         try (Connection conn = DriverManager.getConnection(driverURL);
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery(sql)){
+            
+            while (rs.next()) {
+                logs.add(new Logs(rs.getInt("id"),
+                                   rs.getString("event"),
+                                   rs.getString("username"),
+                                   rs.getString("desc"),
+                                   rs.getString("timestamp")));
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return logs;
+    }
+    
+    public ArrayList<Logs> getLogsByUsername(String username) {
+        String sql = "SELECT id, event, username, desc, timestamp FROM logs WHERE username LIKE ?";
+        ArrayList<Logs> logs = new ArrayList<Logs>();
+        
+        try (Connection conn = DriverManager.getConnection(driverURL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, "%" + username + "%");
+            ResultSet rs = pstmt.executeQuery();
             
             while (rs.next()) {
                 logs.add(new Logs(rs.getInt("id"),

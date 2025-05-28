@@ -244,20 +244,36 @@ public class MgmtUser extends javax.swing.JPanel {
 
     private void chgpassBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_chgpassBtnActionPerformed
         if(table.getSelectedRow() >= 0){
-            JTextField password = new JPasswordField();
-            JTextField confpass = new JPasswordField();
+            JPasswordField password = new JPasswordField();
+            JPasswordField confpass = new JPasswordField();
             designer(password, "PASSWORD");
             designer(confpass, "CONFIRM PASSWORD");
-            
-            Object[] message = {
-                "Enter New Password:", password, confpass
-            };
 
-            int result = JOptionPane.showConfirmDialog(null, message, "CHANGE PASSWORD", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
-            
+            // Add show/hide password toggle checkbox
+            javax.swing.JCheckBox showPasswordCheckBox = new javax.swing.JCheckBox("Show Password");
+            showPasswordCheckBox.addActionListener(e -> {
+                if (showPasswordCheckBox.isSelected()) {
+                    password.setEchoChar((char) 0);
+                    confpass.setEchoChar((char) 0);
+                } else {
+                    password.setEchoChar('•');
+                    confpass.setEchoChar('•');
+                }
+            });
+
+            JPanel panel = new JPanel();
+            panel.setLayout(new javax.swing.BoxLayout(panel, javax.swing.BoxLayout.Y_AXIS));
+            panel.add(new javax.swing.JLabel("Enter New Password:"));
+            panel.add(password);
+            panel.add(new javax.swing.JLabel("Confirm Password:"));
+            panel.add(confpass);
+            panel.add(showPasswordCheckBox);
+
+            int result = JOptionPane.showConfirmDialog(null, panel, "CHANGE PASSWORD", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
+
             if (result == JOptionPane.OK_OPTION) {
-                String pass = password.getText();
-                String conf = confpass.getText();
+                String pass = new String(password.getPassword());
+                String conf = new String(confpass.getPassword());
                 if(!pass.equals(conf)){
                     JOptionPane.showMessageDialog(null, "Passwords do not match.", "Error", JOptionPane.ERROR_MESSAGE);
                     return;
@@ -266,8 +282,30 @@ public class MgmtUser extends javax.swing.JPanel {
                     JOptionPane.showMessageDialog(null, "Password cannot be empty.", "Error", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
+                // Password validation similar to registerAction
+                if (pass.length() < 8 || pass.length() > 64) {
+                    JOptionPane.showMessageDialog(null, "Password must be between 8 and 64 characters.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                if (!pass.matches(".*[a-z].*")) {
+                    JOptionPane.showMessageDialog(null, "Password must contain at least one lowercase letter.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                if (!pass.matches(".*[A-Z].*")) {
+                    JOptionPane.showMessageDialog(null, "Password must contain at least one uppercase letter.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                if (!pass.matches(".*\\d.*")) {
+                    JOptionPane.showMessageDialog(null, "Password must contain at least one digit.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                if (!pass.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*")) {
+                    JOptionPane.showMessageDialog(null, "Password must contain at least one special character.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
                 String username = (String) tableModel.getValueAt(table.getSelectedRow(), 0);
-                String hashedPass = org.mindrot.jbcrypt.BCrypt.hashpw(pass, org.mindrot.jbcrypt.BCrypt.gensalt());
+                byte[] salt = Frame.generateSalt();
+                String hashedPass = Frame.hashPasswordSHA256(pass, salt);
                 boolean success = sqlite.updatePasswordByUsername(username, hashedPass);
                 if(success){
                     JOptionPane.showMessageDialog(null, "Password changed successfully.", "Success", JOptionPane.INFORMATION_MESSAGE);

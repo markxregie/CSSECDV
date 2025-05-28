@@ -379,6 +379,12 @@ public class MgmtProduct extends javax.swing.JPanel {
                 return;
             }
 
+            // Validate product name: only letters and spaces, max length 50
+            if (!name.matches("[a-zA-Z ]{1,50}")) {
+                JOptionPane.showMessageDialog(null, "Product name must contain only letters and spaces, and be up to 50 characters.", "Invalid Product Name", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
             try {
                 int stock = Integer.parseInt(stockStr);
                 double price = Double.parseDouble(priceStr);
@@ -425,6 +431,12 @@ public class MgmtProduct extends javax.swing.JPanel {
 
                 if (newName.isEmpty() || stockStr.isEmpty() || priceStr.isEmpty()) {
                     JOptionPane.showMessageDialog(null, "All fields are required.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                // Validate product name: only letters and spaces, max length 50
+                if (!newName.matches("[a-zA-Z ]{1,50}")) {
+                    JOptionPane.showMessageDialog(null, "Product name must contain only letters and spaces, and be up to 50 characters.", "Invalid Product Name", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
 
